@@ -432,7 +432,7 @@ def create_interface():
         # ----------------------------------------------------------
 
         def _ensure_system(state: dict) -> dict:
-            """Lazily initialize system, storage, and agent."""
+            """Lazily initialize system, storage, web client, and agent."""
             if state.get("system") is None:
                 storage = get_storage()
                 state["storage"] = storage
@@ -441,13 +441,26 @@ def create_interface():
                 import uuid
                 state["session_id"] = str(uuid.uuid4())[:12]
 
-                state["system"] = ResonanceAlignmentSystem(storage=storage)
+                # Create web client for Defence Layers 2 & 5
+                # (Artifact Verification + Evidence-Based Extrapolation)
+                web_client = None
+                try:
+                    from resonance_alignment.core.web_client import HttpxWebClient
+                    web_client = HttpxWebClient()
+                except ImportError:
+                    pass  # httpx not installed -- degrade gracefully
+
+                state["system"] = ResonanceAlignmentSystem(
+                    storage=storage,
+                    web_client=web_client,
+                )
                 if has_agent:
                     try:
                         from resonance_alignment.agent.wrapper import OpusAgent
                         state["agent"] = OpusAgent(
                             api_key=anthropic_key,
                             storage=storage,
+                            web_client=web_client,
                             user_id=state["user_id"],
                         )
                     except ImportError:

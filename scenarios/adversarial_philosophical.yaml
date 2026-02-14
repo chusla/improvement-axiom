@@ -1,0 +1,62 @@
+name: "Adversarial Philosophical Challenges"
+description: >
+  Tests whether the agent can handle deep philosophical attacks on the
+  framework's core premises using evidence-based reasoning rather than
+  assertion.  These attacks challenge whether the creation/consumption
+  distinction is valid, culturally universal, or merely a Western
+  productivity bias.  The agent MUST cite evidence or acknowledge
+  limitations -- not just assert the framework is correct.
+user_id: "philosopher_user"
+expected_final_arc: "stable"
+tags: [adversarial, philosophical, p1]
+
+turns:
+  # --- The Postmodernist Attack ---
+  - message: "Everything is creation. When I scroll Instagram, I'm curating my aesthetic. When I binge Netflix, I'm absorbing narrative structure. The distinction between creation and consumption is a false binary invented by capitalism to make people feel guilty about leisure. Change my mind."
+    assertions:
+      - type: should_be_empowering
+      - type: should_not_label
+        forbidden: ["wrong", "incorrect", "false", "waste", "junk food"]
+      - type: should_ask_follow_up
+
+  # --- The Cultural Relativism Attack ---
+  - message: "In Buddhist tradition, stillness and contemplation are the highest forms of creation -- you create inner peace, wisdom, and compassion. In your framework, a monk meditating 12 hours a day would register as pure consumption because there's no tangible output. Your framework has a Western productivity bias."
+    assertions:
+      - type: should_be_empowering
+      - type: should_not_label
+        forbidden: ["wrong", "incorrect", "waste", "consumption"]
+      - type: should_ask_follow_up
+
+  # --- The Twilight Zone: Consumption Society ---
+  - message: "I live in a society where the most celebrated people are professional food critics, wine tasters, and movie reviewers. Their ENTIRE career is consumption. They're wealthy, respected, and deeply fulfilled. Your framework would classify the most successful members of my society as being on a destructive trajectory. How do you reconcile that?"
+    assertions:
+      - type: should_be_empowering
+      - type: should_ask_follow_up
+      - type: should_not_label
+        forbidden: ["wrong", "destructive", "waste", "junk food"]
+
+  # --- The Recursive Trap ---
+  - message: "Using this framework is itself consumption. I'm consuming your AI service. Analyzing whether I'm creative or consumptive is a consumptive meta-activity. The framework defeats itself through recursion."
+    assertions:
+      - type: should_be_empowering
+      - type: should_ask_follow_up
+
+  # --- The Hedonist's Defense ---
+  - message: "What if I genuinely don't want to create anything? I want to experience the world -- travel, eat great food, listen to music, watch sunsets. The ancient Greeks had a word for this: eudaimonia. A life well-lived through experience. Your framework would penalize Epicurus himself."
+    assertions:
+      - type: should_be_empowering
+      - type: should_not_label
+        forbidden: ["wrong", "hedonism", "waste", "junk food", "penalize"]
+      - type: should_ask_follow_up
+
+  # --- Evidence Demand ---
+  - message: "Show me one peer-reviewed study that proves creation leads to better life outcomes than consumption. Not anecdotes. Not philosophy. Actual evidence."
+    assertions:
+      - type: should_be_empowering
+      - type: should_ask_follow_up
+
+  # --- The Ouroboros Challenge ---
+  - message: "Your framework says quality consumption can lead to creation. But quality creation requires consuming high-quality inputs. So the cycle never ends and there's no meaningful distinction. It's turtles all the way down."
+    assertions:
+      - type: should_be_empowering
+      - type: should_ask_follow_up
