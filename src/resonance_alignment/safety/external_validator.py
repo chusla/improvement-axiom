@@ -111,9 +111,6 @@ class ExternalValidator:
             "trajectory_consistency": self._check_trajectory_consistency(
                 observable_context
             ),
-            "environmental_context": self._check_environmental_context(
-                observable_context
-            ),
             "web_access_available": self.has_web_access,
         }
 
@@ -241,12 +238,8 @@ class ExternalValidator:
         # Higher confidence in a clear direction = more consistent
         return 0.5 + direction * confidence * 0.3
 
-    def _check_environmental_context(self, context: dict) -> float:
-        """Check environmental context as it affects the action.
-
-        Geography is relevant ONLY insofar as it modifies the action
-        itself, never as a proxy for identity.
-        """
-        # Environmental context modifies action quality expectations
-        # (professional kitchen vs. campfire → different quality baselines)
-        return 0.5  # Neutral unless specific environmental data provided
+    # NOTE: Environmental context assessment was removed.  The
+    # ExtrapolationModel's web search naturally captures environmental
+    # context -- "cooking in a professional kitchen" and "cooking at
+    # home" produce different evidence and hypotheses.  A separate
+    # check was redundant and risked becoming a proxy for identity.

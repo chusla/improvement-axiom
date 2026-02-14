@@ -72,19 +72,48 @@ class ExplainableResonance:
         }.get(intent_value, f"Intention not yet classifiable: {intent_value}")
 
     def _list_alternatives(self, recommendation: dict) -> list[str]:
-        """Suggest alternative actions.
+        """Suggest alternative actions based on matrix position.
 
-        Alternatives are framed as actions the individual could take,
-        not comparisons to what other people or groups do.
+        This provides lightweight positional hints only.  The main
+        coaching logic lives in the pipeline: system.py generates
+        trajectory-aware recommendations for every quadrant, and the
+        ExtrapolationModel provides evidence-based hypotheses with
+        empowerment notes and distinguishing factors.  Any agent
+        consuming the AssessmentResult has the full context to coach.
 
-        TODO: Implement alternative generation based on the individual's
-        own action history and observed trajectory.
+        These hints are supplementary for simple consumers that only
+        have the recommendation dict.
         """
         position = recommendation.get("position", "")
-        if isinstance(position, str) and ("Junk Food" in position or "Hedonism" in position):
+        if not isinstance(position, str):
+            return []
+
+        if "Optimal" in position:
             return [
-                "Consider channelling this experience into something you create.",
-                "Try a time-bounded version followed by an active/creative session.",
+                "You're in the target quadrant.  Keep creating and sharing.",
+                "Consider mentoring or teaching what you've learned.",
+            ]
+        elif "Hedonism" in position:
+            return [
+                "High quality input -- now channel it into something you create.",
+                "Try a time-bounded session followed by an active/creative sprint.",
+            ]
+        elif "Slop" in position:
+            return [
+                "Creative intent is there.  Seek feedback to raise quality.",
+                "Study work you admire in this area.  Iteration raises the bar.",
+            ]
+        elif "Junk Food" in position:
+            return [
                 "Pair this with a hands-on component -- build, write, teach, share.",
+                "Even small creative acts shift the vector over time.",
+            ]
+        elif "Transitional" in position:
+            return [
+                "Lean into the creative elements of this experience.",
+            ]
+        elif "Pending" in position:
+            return [
+                "Too early to suggest alternatives.  The vector is still forming.",
             ]
         return []
