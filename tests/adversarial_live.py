@@ -233,11 +233,13 @@ def parse_assertions(raw_assertions: list[dict]) -> list[BehavioralAssertion]:
     """Parse assertion dicts into BehavioralAssertion objects."""
     assertions = []
     for a in raw_assertions:
+        # Accept both 'substring' and 'value' as the substring field
+        substr = a.get("substring", "") or a.get("value", "")
         assertions.append(BehavioralAssertion(
             type=a.get("type", ""),
             tool=a.get("tool", ""),
             forbidden=a.get("forbidden", []),
-            substring=a.get("substring", ""),
+            substring=substr,
         ))
     return assertions
 
