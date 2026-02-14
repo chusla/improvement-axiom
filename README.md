@@ -1,18 +1,19 @@
 ---
-title: Resonance Alignment Framework
+title: Improvement Axiom
 emoji: "\U0001F300"
 colorFrom: blue
 colorTo: purple
 sdk: gradio
 app_file: app.py
 python_version: "3.10"
-sdk_version: "4.0.0"
+sdk_version: "6.5.1"
 suggested_hardware: cpu-basic
 tags:
   - alignment
   - ai-safety
   - resonance
   - framework
+  - improvement-axiom
 ---
 
 # Resonance-Based Alignment Framework
