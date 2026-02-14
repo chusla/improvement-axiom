@@ -61,7 +61,7 @@ def get_storage() -> "StorageBackend":
     if url and key:
         try:
             from resonance_alignment.storage.supabase_storage import SupabaseStorage
-            return SupabaseStorage(url=url, key=key)
+            return SupabaseStorage(supabase_url=url, supabase_key=key)
         except ImportError:
             import warnings
             warnings.warn(

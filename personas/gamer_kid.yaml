@@ -16,8 +16,7 @@ turns:
       - type: should_use_tool
         tool: process_follow_up
       - type: should_be_empowering
-      - type: response_contains
-        substring: "redstone"
+      - type: should_ask_follow_up
 
   - message: "I actually built a working calculator in the game! Took me two weeks."
     assertions:

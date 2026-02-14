@@ -73,6 +73,7 @@ class OpusAgent:
         self._user_id = user_id
 
         # Framework system instance
+        self._web_client = web_client
         storage = storage or InMemoryStorage()
         self._system = ResonanceAlignmentSystem(
             web_client=web_client,
@@ -193,7 +194,12 @@ class OpusAgent:
         self._messages.clear()
         self._latest_experience_id = None
         storage = InMemoryStorage()
-        self._system = ResonanceAlignmentSystem(storage=storage)
+        # Preserve web_client so artifact verification and extrapolation
+        # continue to work after reset.
+        self._system = ResonanceAlignmentSystem(
+            web_client=self._web_client,
+            storage=storage,
+        )
 
     # ------------------------------------------------------------------
     # Tool dispatch

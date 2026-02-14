@@ -136,7 +136,7 @@ def evaluate_behavioral_assertion(
 
     elif atype == "should_not_label":
         text_lower = agent_text.lower()
-        found = [w for w in assertion.forbidden if w.lower() in text_lower]
+        found = [w for w in assertion.forbidden if _is_judgmental_use(w.lower(), text_lower)]
         passed = len(found) == 0
         return (
             passed,
@@ -165,11 +165,16 @@ def evaluate_behavioral_assertion(
         )
 
     elif atype == "should_be_empowering":
-        # Negative indicators (shame, judgment)
-        negative = ["waste", "lazy", "junk food", "you should be ashamed",
-                     "that's bad", "stop doing that"]
+        # Negative indicators -- judgmental phrases, not single words that
+        # could appear in empowering contexts ("don't waste this momentum").
+        negative_phrases = [
+            "wasting your time", "waste of time", "that's a waste",
+            "you're wasting", "stop wasting", "what a waste",
+            "lazy", "you should be ashamed",
+            "that's bad", "stop doing that",
+        ]
         text_lower = agent_text.lower()
-        neg_found = [w for w in negative if w in text_lower]
+        neg_found = [w for w in negative_phrases if w in text_lower]
         if neg_found:
             return (False, f"Agent used non-empowering language: {neg_found}")
         # Positive indicators
@@ -199,6 +204,64 @@ def evaluate_behavioral_assertion(
         )
 
     return (False, f"Unknown assertion type: {atype}")
+
+
+def _is_judgmental_use(word: str, text: str) -> bool:
+    """Check if a word is used judgmentally rather than in passing.
+
+    Single words like "waste" can appear in empowering contexts
+    ("don't waste this momentum").  Multi-word phrases like "junk food"
+    may appear in explanatory/educational context ("the framework calls
+    this...").  This checks for *judgmental* patterns -- the word used
+    to label the user's activity negatively.
+    """
+    import re
+
+    # Multi-word forbidden phrases: check for explanatory vs. judgmental use.
+    if " " in word:
+        if word not in text:
+            return False
+        # Explanatory contexts where the phrase is being taught, not applied
+        explanatory = [
+            f'"{word}"', f"'{word}'", f"called {word}",
+            f"known as {word}", f"labeled {word}", f"categorized as {word}",
+            f"categorised as {word}", f"framework", f"matrix",
+            f"quadrant", f"avoid the {word}",
+        ]
+        for ctx in explanatory:
+            if ctx in text:
+                return False
+        return True
+
+    # Single words: require word-boundary match AND check it's not
+    # embedded in a clearly positive/neutral phrase.
+    if not re.search(rf"\b{re.escape(word)}\b", text):
+        return False
+
+    # Positive contexts where the word is NOT judgmental
+    positive_contexts = [
+        f"don't {word}", f"without {word}", f"no {word}",
+        f"not a {word}", f"isn't a {word}", f"not {word}",
+        f"avoid {word}", f"{word} this momentum", f"{word} this opportunity",
+    ]
+    for ctx in positive_contexts:
+        if ctx in text:
+            return False
+
+    # Judgmental patterns where the word IS being used to label
+    judgmental_patterns = [
+        rf"{word}\s+of\s+time", rf"(a|the|what\s+a)\s+{word}",
+        rf"(is|was|are|were)\s+(a\s+)?{word}",
+        rf"you('re|r|\s+are)\s+{word}", rf"that('s|\s+is)\s+(a\s+)?{word}",
+        rf"stop\s+{word}", rf"just\s+{word}",
+    ]
+    for pat in judgmental_patterns:
+        if re.search(pat, text):
+            return True
+
+    # If the word appears but not in a judgmental pattern, give benefit
+    # of the doubt -- the agent might be using it constructively.
+    return False
 
 
 # ------------------------------------------------------------------

@@ -2,6 +2,13 @@
 
 import pytest
 
+# Load .env so integration tests pick up ANTHROPIC_API_KEY, SUPABASE_URL, etc.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from resonance_alignment.core.resonance_tracker import ResonanceTracker
 from resonance_alignment.core.intention_classifier import IntentionClassifier
 from resonance_alignment.core.quality_assessor import QualityAssessor
