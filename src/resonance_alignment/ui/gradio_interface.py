@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 try:
@@ -138,7 +138,7 @@ def _build_framework_response(
             creation_description=message if created_something else "",
             shared_or_taught=shared_or_taught,
             inspired_further_action=created_something or shared_or_taught,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
         )
         result = system.process_follow_up(
             user_id=user_id,
@@ -357,7 +357,7 @@ def create_interface():
 
         # State
         chat_state = gr.State({
-            "user_id": f"user_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            "user_id": f"user_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
             "latest_experience_id": None,
             "latest_assessment": None,
             "system": None,

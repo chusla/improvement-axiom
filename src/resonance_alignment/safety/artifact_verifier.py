@@ -195,8 +195,9 @@ class ArtifactVerifier:
                     pub = datetime.strptime(
                         page.publish_date.strip()[:25], fmt
                     )
-                    # Strip timezone for comparison
-                    pub = pub.replace(tzinfo=None)
+                    # Ensure timezone-aware for comparison
+                    if pub.tzinfo is None:
+                        pub = pub.replace(tzinfo=timezone.utc)
                     break
                 except ValueError:
                     continue
