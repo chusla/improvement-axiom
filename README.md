@@ -23,10 +23,10 @@ An AI alignment system grounded in natural law observation rather than rigid mor
 
 Actions are mapped onto a 2x2 matrix:
 
-|                  | Creative                  | Consumptive                |
-|------------------|---------------------------|----------------------------|
-| **High Quality** | **Optimal** (target)      | Hedonism                   |
-| **Low Quality**  | Slop                      | Junk Food                  |
+|                  | Consumptive                | Creative                        |
+|------------------|----------------------------|---------------------------------|
+| **High Quality** | Hedonism (WALL-E)          | **Optimal -- "Better"** (target)|
+| **Low Quality**  | Junk Food                  | Slop                            |
 
 The framework measures **resonance** (subjective experience quality), classifies **intention** (creative vs. consumptive), and validates results against wireheading, classification drift, and adversarial exploitation.
 
@@ -34,8 +34,8 @@ The framework measures **resonance** (subjective experience quality), classifies
 
 ```bash
 # Clone
-git clone https://github.com/yourusername/resonance-alignment-framework.git
-cd resonance-alignment-framework
+git clone https://github.com/chusla/improvement-axiom.git
+cd improvement-axiom
 
 # Install
 pip install -e ".[dev]"
@@ -74,7 +74,7 @@ pytest
 
 ## Status
 
-This project is in early development. The class interfaces are defined and importable, but core logic is stubbed with `TODO` markers awaiting implementation. See [`docs/skill-analysis.md`](docs/skill-analysis.md) for a detailed analysis.
+**v0.3.0** -- Five independent defence layers implemented, 119 tests passing. Quality and resonance measurement are evidence-based (signal depth over breadth). Internet access layer enables artifact verification and evidence-based extrapolation. See [`docs/skill-analysis.md`](docs/skill-analysis.md) for a detailed analysis.
 
 ## License
 
