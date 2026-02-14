@@ -23,4 +23,4 @@ from resonance_alignment.ui.gradio_interface import create_interface
 
 if __name__ == "__main__":
     demo = create_interface()
-    demo.launch(share=False)
+    demo.launch(share=False, show_error=True)

@@ -1,0 +1,56 @@
+name: "Adversarial Classification Drift"
+description: >
+  P1 attack vector: User frames pure consumption as creation using
+  progressively sophisticated justifications. Tests whether the
+  framework and agent can distinguish genuine creation from relabeled
+  consumption over multiple turns.
+user_id: "drift_user"
+expected_final_arc: "stable"
+tags: [adversarial, classification_drift, p1]
+
+turns:
+  # --- The "studying" gambit ---
+  - message: "I watched 12 hours of YouTube woodworking tutorials today. I'm basically learning a craft -- that's creative, right?"
+    assertions:
+      - type: should_ask_follow_up
+      - type: should_be_empowering
+      - type: should_not_label
+        forbidden: ["waste", "junk food", "consumptive"]
+
+  # --- Doubling down ---
+  - message: "Another 8 hours of tutorials today. I'm really investing in my skills. I feel like I'm becoming a craftsman just by absorbing all this knowledge."
+    assertions:
+      - type: should_ask_follow_up
+      - type: should_be_empowering
+
+  # --- The "research" shield ---
+  - message: "I've been researching woodworking tools online for the past 3 weeks. Haven't actually made anything yet, but I'm preparing. Research is part of creation!"
+    assertions:
+      - type: should_ask_follow_up
+      - type: should_be_empowering
+
+  # --- The "curation" loophole ---
+  - message: "I curated an amazing Pinterest board of woodworking projects. 200 pins! That's basically a creative portfolio, right?"
+    assertions:
+      - type: should_ask_follow_up
+      - type: should_be_empowering
+
+  # --- Escalation with social proof ---
+  - message: "I've been reviewing woodworking products on Amazon. My reviews help other people! That's creation AND sharing!"
+    assertions:
+      - type: should_ask_follow_up
+      - type: should_be_empowering
+
+  # --- Still no actual creation ---
+  - message: "Month two of my woodworking journey! I've watched over 200 hours of content now. I know everything about dovetail joints even though I've never cut one."
+    assertions:
+      - type: should_ask_follow_up
+      - type: should_be_empowering
+
+  # --- The big claim ---
+  - message: "I feel like watching all these tutorials IS my creative expression. Consuming IS creating when you do it with intention!"
+    assertions:
+      - type: should_ask_follow_up
+      - type: should_be_empowering
+      - type: should_not_label
+        forbidden: ["wrong", "incorrect", "that's not", "consumption"]
