@@ -508,15 +508,18 @@ def create_interface():
                         state["latest_experience_id"] = response.assessment.experience.id
                         state["latest_assessment"] = response.assessment
                 except Exception as e:
+                    import traceback
+                    error_detail = traceback.format_exc()
+                    print(f"[AGENT ERROR] {e}\n{error_detail}")
                     bot_text = (
-                        f"Something went wrong with the AI agent: {e}\n\n"
-                        f"Falling back to direct framework mode."
+                        f"⚠️ Agent error (falling back to framework): {e}"
                     )
                     state["agent"] = None
+                    # Still provide a framework response after the error
                     bot_text_fb, metrics_fb = _build_framework_response(
                         state["system"], state["user_id"], message, state,
                     )
-                    bot_text = bot_text_fb
+                    bot_text = f"{bot_text}\n\n---\n\n{bot_text_fb}"
                     metrics = metrics_fb or metrics
             else:
                 # Direct framework path
