@@ -512,7 +512,7 @@ def create_interface():
                     error_detail = traceback.format_exc()
                     print(f"[AGENT ERROR] {e}\n{error_detail}")
                     bot_text = (
-                        f"⚠️ Agent error (falling back to framework): {e}"
+                        f"[Agent error, falling back to framework]: {e}"
                     )
                     state["agent"] = None
                     # Still provide a framework response after the error
