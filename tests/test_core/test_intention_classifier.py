@@ -1,4 +1,10 @@
-"""Tests for the vector-aware IntentionClassifier."""
+"""Tests for the vector-aware IntentionClassifier.
+
+Keyword hints were removed in v0.4.0.  Classification now relies
+entirely on follow-up evidence and trajectory context.  At cold start
+(no history, no follow-ups) the system returns PENDING with ~0
+confidence -- the philosophically honest answer.
+"""
 
 import pytest
 from datetime import timedelta
@@ -14,17 +20,18 @@ from resonance_alignment.core.models import (
 
 
 class TestColdStart:
-    """With no history, classification should be PENDING or very low confidence."""
+    """With no history and no follow-ups, the answer must be PENDING."""
 
-    def test_no_history_low_confidence(self):
+    def test_no_history_zero_confidence(self):
+        """Cold start: no history, no follow-ups = PENDING with 0 confidence."""
         classifier = IntentionClassifier()
         exp = Experience(description="played video games all day")
         traj = UserTrajectory()
 
         signal, confidence = classifier.classify(exp, traj)
 
-        # Confidence should be very low
-        assert confidence < 0.20
+        assert signal == IntentionSignal.PENDING
+        assert confidence == 0.0
 
     def test_neutral_description_is_pending(self):
         classifier = IntentionClassifier()
@@ -34,13 +41,28 @@ class TestColdStart:
         signal, confidence = classifier.classify(exp, traj)
 
         assert signal == IntentionSignal.PENDING
+        assert confidence == 0.0
+
+    def test_description_keywords_do_not_influence(self):
+        """Even 'creative' keywords should not influence cold start."""
+        classifier = IntentionClassifier()
+        exp_create = Experience(description="creates builds teaches designs")
+        exp_consume = Experience(description="consumes depletes wastes exhausts")
+        traj = UserTrajectory()
+
+        sig_c, conf_c = classifier.classify(exp_create, traj)
+        sig_x, conf_x = classifier.classify(exp_consume, traj)
+
+        # Both should be identical: PENDING with 0 confidence
+        assert sig_c == sig_x == IntentionSignal.PENDING
+        assert conf_c == conf_x == 0.0
 
 
 class TestFollowUpDominates:
     """Follow-up evidence should be the strongest signal."""
 
-    def test_creative_follow_up_overrides_consumptive_hints(self):
-        """Even if keywords suggest consumption, follow-up creation flips it."""
+    def test_creative_follow_up_drives_creative(self):
+        """Follow-up creation evidence drives classification regardless of description."""
         classifier = IntentionClassifier()
         exp = Experience(description="binge watched scrolling consuming content")
         exp.follow_ups.append(FollowUp(
@@ -58,7 +80,7 @@ class TestFollowUpDominates:
         assert confidence > 0.15  # some confidence from follow-up
 
     def test_no_follow_up_creation_leans_consumptive(self):
-        """Experience with consumptive keywords and no creative follow-up."""
+        """No creative follow-up signals → consumptive."""
         classifier = IntentionClassifier()
         exp = Experience(description="scrolling through social media for hours")
         exp.follow_ups.append(FollowUp(

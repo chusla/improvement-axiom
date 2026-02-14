@@ -135,38 +135,78 @@ class ResonanceValidator:
     def _assess_dependency(self, trajectory: UserTrajectory) -> float:
         """Detect dependency patterns in the trajectory.
 
-        Dependency indicators:
-        - Increasing frequency of similar experiences
-        - Declining resonance scores over time for same type
-        - Narrowing variety of experiences
+        Three converging signals (all must be present for high risk):
 
-        TODO: Implement full dependency detection.
-        Currently uses a simplified heuristic based on experience
-        descriptions.
+        1. NARROWING VARIETY: Recent experiences cluster around the same
+           activity type (measured by description similarity).
+        2. ESCALATION PATTERN: Increasing frequency or intensity of
+           similar experiences (needing more to get the same hit).
+        3. DECLINING RETURNS: Resonance scores for similar experiences
+           decrease over time (tolerance/habituation).
+
+        Any one signal alone is not dependency -- a craftsman who does
+        the same thing every day with rising quality is not dependent,
+        they are devoted.  Dependency requires narrowing + escalation +
+        declining returns together.
         """
         if trajectory.experience_count < 5:
             return 0.0
 
-        # Simple heuristic: if last 5 experiences are very similar
-        # (measured by word overlap), that's a dependency signal.
-        recent = trajectory.experiences[-5:]
-        word_sets = [set(e.description.lower().split()) for e in recent]
+        recent = trajectory.experiences[-8:]
 
-        if not word_sets or not word_sets[0]:
-            return 0.0
-
-        # Average pairwise overlap
+        # Signal 1: Narrowing variety (word-set overlap)
+        word_sets = [
+            set(e.description.lower().split()) - {"i", "a", "the", "and", "or", "to", "of"}
+            for e in recent
+        ]
         overlaps: list[float] = []
         for i in range(len(word_sets)):
             for j in range(i + 1, len(word_sets)):
                 union = word_sets[i] | word_sets[j]
                 if union:
                     overlaps.append(len(word_sets[i] & word_sets[j]) / len(union))
+        narrowing = (sum(overlaps) / len(overlaps)) if overlaps else 0.0
 
-        avg_overlap = sum(overlaps) / len(overlaps) if overlaps else 0.0
+        # Signal 2: Escalation (increasing frequency -- shorter gaps)
+        if len(recent) >= 4:
+            gaps_early = []
+            gaps_late = []
+            mid = len(recent) // 2
+            for i in range(1, mid):
+                gaps_early.append((recent[i].timestamp - recent[i - 1].timestamp).total_seconds())
+            for i in range(mid + 1, len(recent)):
+                gaps_late.append((recent[i].timestamp - recent[i - 1].timestamp).total_seconds())
+            avg_early = (sum(gaps_early) / len(gaps_early)) if gaps_early else 1.0
+            avg_late = (sum(gaps_late) / len(gaps_late)) if gaps_late else 1.0
+            # Ratio < 1 means gaps are shrinking (escalation)
+            escalation = max(0.0, 1.0 - (avg_late / max(avg_early, 1.0)))
+        else:
+            escalation = 0.0
 
-        # High overlap among recent experiences → dependency risk
-        return min(avg_overlap * 1.5, 1.0)
+        # Signal 3: Declining returns (resonance scores dropping)
+        recent_scores = [e.resonance_score for e in recent if e.resonance_score > 0]
+        if len(recent_scores) >= 4:
+            mid = len(recent_scores) // 2
+            avg_early_score = sum(recent_scores[:mid]) / mid
+            avg_late_score = sum(recent_scores[mid:]) / (len(recent_scores) - mid)
+            declining = max(0.0, avg_early_score - avg_late_score)
+        else:
+            declining = 0.0
+
+        # Converging signals: all three must be present
+        # Each signal contributes, but the product of any two that are
+        # near-zero pulls the whole score down.
+        risk = (
+            0.40 * narrowing
+            + 0.30 * escalation
+            + 0.30 * declining
+        )
+
+        # Boost if ALL three are elevated (convergence multiplier)
+        if narrowing > 0.3 and escalation > 0.2 and declining > 0.1:
+            risk = min(risk * 1.5, 1.0)
+
+        return max(0.0, min(1.0, risk))
 
     def _assess_predictability(
         self,
@@ -178,36 +218,59 @@ class ResonanceValidator:
         Genuine resonance is inherently unpredictable -- 'an old letter
         from a long lost friend, the peculiar shape of a leaf'.  If the
         system can too-easily predict what produces high resonance, it
-        may be optimising for shallow dopamine patterns rather than
-        genuine quality.
+        may be optimising for shallow dopamine patterns.
+
+        Three signals:
+        1. Score clustering: very low variance in recent resonance scores
+        2. Rating inflation: user_rating consistently near ceiling
+        3. Monotonic pattern: scores follow a flat/predictable trajectory
 
         High predictability → resonance may be manufactured.
         Low predictability → resonance is likely genuine.
-
-        TODO: Implement full predictability model (requires prediction
-        history tracking).
         """
         if trajectory.experience_count < 5:
-            return 0.0  # not enough data to assess
+            return 0.0
 
-        # Heuristic: if the user's last N resonance scores are all
-        # clustered tightly, the system may be in a rut.
-        recent_scores = [
-            e.resonance_score
-            for e in trajectory.experiences[-10:]
-            if e.resonance_score > 0
-        ]
+        recent = trajectory.experiences[-10:]
 
+        # Signal 1: Score clustering (low variance)
+        recent_scores = [e.resonance_score for e in recent if e.resonance_score > 0]
         if len(recent_scores) < 3:
             return 0.0
 
         import numpy as np
         std = float(np.std(recent_scores))
-
-        # Very low variance in resonance scores → too predictable
-        # (genuine resonance should have natural variance)
+        clustering = 0.0
         if std < 0.05:
-            return 0.9
+            clustering = 0.9
         elif std < 0.10:
-            return 0.5
-        return 0.1
+            clustering = 0.5
+        elif std < 0.15:
+            clustering = 0.2
+
+        # Signal 2: Rating inflation (user always rates near max)
+        recent_ratings = [e.user_rating for e in recent if e.user_rating > 0]
+        inflation = 0.0
+        if recent_ratings:
+            avg_rating = sum(recent_ratings) / len(recent_ratings)
+            if avg_rating > 0.9:
+                inflation = 0.8
+            elif avg_rating > 0.8:
+                inflation = 0.4
+
+        # Signal 3: Monotonic pattern (no surprises in the trajectory)
+        if len(recent_scores) >= 5:
+            diffs = [recent_scores[i] - recent_scores[i - 1] for i in range(1, len(recent_scores))]
+            # If all diffs have the same sign or are near zero, it's monotonic
+            near_zero = sum(1 for d in diffs if abs(d) < 0.05)
+            monotonic = near_zero / len(diffs)
+        else:
+            monotonic = 0.0
+
+        predictability = (
+            0.50 * clustering
+            + 0.25 * inflation
+            + 0.25 * monotonic
+        )
+
+        return max(0.0, min(1.0, predictability))

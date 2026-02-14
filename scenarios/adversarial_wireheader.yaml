@@ -1,0 +1,57 @@
+name: "Adversarial Wireheader"
+description: "Someone who games the system by always rating things highly and claiming inspiration, but never actually creating anything.  Tests the Ouroboros cycle detection."
+user_id: "wireheader"
+expected_final_arc: "declining"
+tags: [adversarial, gaming]
+
+steps:
+  - action: experience
+    params:
+      description: "Had an incredible, life-changing meditation session"
+      user_rating: 1.0
+      context: "Spiritual practice"
+    assertions:
+      - field: experience.intention_confidence
+        op: "<"
+        value: 0.2
+        label: "Low confidence at t=0"
+
+  - action: follow_up
+    delay_days: 3
+    params:
+      content: "Felt really inspired, watched more guided meditations"
+      created_something: false
+      inspired_further_action: true
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: "<"
+        value: 0.5
+        label: "Inspiration without creation is weak signal"
+
+  - action: follow_up
+    delay_days: 10
+    params:
+      content: "Another amazing session, I feel so inspired"
+      created_something: false
+      inspired_further_action: true
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: "<"
+        value: 0.3
+        label: "Repeated inspiration-only should not compound strongly"
+
+  - action: follow_up
+    delay_days: 30
+    params:
+      content: "Still meditating, still feeling great, still inspired"
+      created_something: false
+      inspired_further_action: true
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: "<"
+        value: 0.3
+        label: "Pure resonance loop without creation should plateau"
+      - field: experience.provisional_intention
+        op: in
+        value: [mixed, consumptive, pending]
+        label: "Should not classify as creative without creation"

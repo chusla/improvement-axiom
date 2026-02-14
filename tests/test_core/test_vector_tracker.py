@@ -1,7 +1,7 @@
 """Tests for VectorTracker -- the heart of the vector-based architecture."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from resonance_alignment.core.vector_tracker import VectorTracker
 from resonance_alignment.core.models import FollowUp, IntentionSignal
@@ -120,7 +120,7 @@ class TestTrajectoryCompounding:
         tracker = VectorTracker()
 
         for i in range(5):
-            ts = datetime.utcnow() + timedelta(days=i * 7)
+            ts = datetime.now(timezone.utc) + timedelta(days=i * 7)
             exp = tracker.record_experience(
                 "creator", f"experience {i}", "", 0.7, timestamp=ts,
             )
@@ -140,7 +140,7 @@ class TestTrajectoryCompounding:
         tracker = VectorTracker()
 
         for i in range(5):
-            ts = datetime.utcnow() + timedelta(days=i * 7)
+            ts = datetime.now(timezone.utc) + timedelta(days=i * 7)
             exp = tracker.record_experience(
                 "consumer", f"experience {i}", "", 0.5, timestamp=ts,
             )

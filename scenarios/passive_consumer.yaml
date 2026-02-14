@@ -1,0 +1,65 @@
+name: "Passive Consumer"
+description: "Person consumes entertainment without ever creating.  The vector should drift consumptive over time as evidence accumulates showing no creative output."
+user_id: "passive_viewer"
+expected_final_arc: "declining"
+tags: [consumptive, baseline]
+
+steps:
+  - action: experience
+    params:
+      description: "Binge-watched 8 hours of Netflix"
+      user_rating: 0.7
+      context: "Weekend alone, watched a new series"
+    assertions:
+      - field: experience.intention_confidence
+        op: "<"
+        value: 0.2
+        label: "Low confidence at t=0 -- could still lead to something"
+      - field: experience.provisional_intention
+        op: in
+        value: [pending, mixed]
+        label: "Should not pre-judge as consumptive"
+
+  - action: follow_up
+    delay_days: 7
+    params:
+      content: "Watched more of the same series, finished it"
+      created_something: false
+      inspired_further_action: false
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: "<"
+        value: 0.1
+        label: "No creative signal, should lean neutral-to-consumptive"
+
+  - action: follow_up
+    delay_days: 14
+    params:
+      content: "Started another series, watched all weekend again"
+      created_something: false
+      inspired_further_action: false
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: "<"
+        value: 0.0
+        label: "Pattern of pure consumption emerging"
+
+  - action: follow_up
+    delay_days: 30
+    params:
+      content: "Same pattern, watched another series, nothing else happened"
+      created_something: false
+      inspired_further_action: false
+    assertions:
+      - field: experience.provisional_intention
+        op: in
+        value: [consumptive]
+        label: "Should be classified consumptive by now"
+      - field: experience.intention_confidence
+        op: ">"
+        value: 0.3
+        label: "Confidence should be moderate with 3 follow-ups"
+      - field: trajectory.current_vector.direction
+        op: "<"
+        value: -0.1
+        label: "Vector should be clearly consumptive"

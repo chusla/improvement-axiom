@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "resonance-alignment-framework"
-version = "0.1.0"
+version = "0.4.0"
 description = "Resonance-based AI alignment framework using quality-intention matrix and Ouroboros cycle principles"
 readme = "README.md"
 license = {text = "MIT"}
@@ -20,6 +20,16 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "ruff>=0.1.0",
+    "pyyaml>=6.0",
+]
+agent = [
+    "anthropic>=0.40.0",
+]
+supabase = [
+    "supabase>=2.0.0",
+]
+dotenv = [
+    "python-dotenv>=1.0.0",
 ]
 
 [project.urls]
@@ -36,6 +46,10 @@ where = ["src"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-v"
+markers = [
+    "integration: live API integration tests (require ANTHROPIC_API_KEY)",
+    "slow: tests that take significant time to run",
+]
 
 [tool.ruff]
 line-length = 100

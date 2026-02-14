@@ -108,6 +108,10 @@ class WebClient(ABC):
 class HttpxWebClient(WebClient):
     """Production web client using httpx for real HTTP access.
 
+    Includes rate limiting, caching, and retry logic for standalone
+    use (when no LLM agent is available).  For the primary use case
+    with an LLM agent, use AgentWebClient instead.
+
     Requires: pip install httpx
     """
 
@@ -116,6 +120,9 @@ class HttpxWebClient(WebClient):
         timeout: float = 15.0,
         search_endpoint: str | None = None,
         search_api_key: str | None = None,
+        max_retries: int = 2,
+        min_request_interval: float = 1.0,
+        cache_ttl_seconds: int = 3600,
     ) -> None:
         try:
             import httpx  # noqa: F401
@@ -123,7 +130,7 @@ class HttpxWebClient(WebClient):
             self._client = httpx.Client(
                 timeout=timeout,
                 follow_redirects=True,
-                headers={"User-Agent": "ImprovementAxiom/0.2 (ArtifactVerifier)"},
+                headers={"User-Agent": "ImprovementAxiom/0.3 (ArtifactVerifier)"},
             )
         except ImportError:
             raise ImportError(
@@ -132,78 +139,140 @@ class HttpxWebClient(WebClient):
             )
         self._search_endpoint = search_endpoint
         self._search_api_key = search_api_key
+        self._max_retries = max_retries
+        self._min_request_interval = min_request_interval
+        self._cache_ttl = cache_ttl_seconds
+
+        # Simple in-memory cache: url → (WebPage, timestamp)
+        self._page_cache: dict[str, tuple[WebPage, float]] = {}
+        self._search_cache: dict[str, tuple[list[SearchResult], float]] = {}
+        self._last_request_time: float = 0.0
+
+    def _rate_limit(self) -> None:
+        """Enforce minimum interval between requests."""
+        import time
+        now = time.monotonic()
+        elapsed = now - self._last_request_time
+        if elapsed < self._min_request_interval:
+            time.sleep(self._min_request_interval - elapsed)
+        self._last_request_time = time.monotonic()
+
+    def _is_cache_valid(self, cache_time: float) -> bool:
+        """Check if a cache entry is still within TTL."""
+        import time
+        return (time.monotonic() - cache_time) < self._cache_ttl
 
     def fetch_page(self, url: str) -> WebPage:
-        """Fetch a URL and extract textual content."""
-        try:
-            resp = self._client.get(url)
-            content = resp.text
+        """Fetch a URL with caching, rate limiting, and retry."""
+        # Check cache first
+        if url in self._page_cache:
+            cached_page, cache_time = self._page_cache[url]
+            if self._is_cache_valid(cache_time):
+                return cached_page
 
-            title = self._extract_title(content)
-            text = self._extract_text(content)
-            pub_date = self._extract_date(content)
-            platform = self._detect_platform(url)
+        import time
 
-            return WebPage(
-                url=str(resp.url),
-                status_code=resp.status_code,
-                title=title,
-                content_text=text,
-                content_length=len(resp.content),
-                publish_date=pub_date,
-                platform=platform,
-                accessible=(200 <= resp.status_code < 400),
-            )
-        except Exception as exc:
-            return WebPage(
-                url=url,
-                accessible=False,
-                error=str(exc),
-            )
+        for attempt in range(self._max_retries + 1):
+            self._rate_limit()
+            try:
+                resp = self._client.get(url)
+                content = resp.text
+
+                title = self._extract_title(content)
+                text = self._extract_text(content)
+                pub_date = self._extract_date(content)
+                platform = self._detect_platform(url)
+
+                page = WebPage(
+                    url=str(resp.url),
+                    status_code=resp.status_code,
+                    title=title,
+                    content_text=text,
+                    content_length=len(resp.content),
+                    publish_date=pub_date,
+                    platform=platform,
+                    accessible=(200 <= resp.status_code < 400),
+                )
+
+                # Cache successful responses
+                if page.accessible:
+                    self._page_cache[url] = (page, time.monotonic())
+
+                return page
+
+            except Exception as exc:
+                if attempt < self._max_retries:
+                    time.sleep(2 ** attempt)  # exponential backoff
+                    continue
+                return WebPage(
+                    url=url,
+                    accessible=False,
+                    error=str(exc),
+                )
+
+        return WebPage(url=url, accessible=False, error="Max retries exceeded")
 
     def search(
         self, query: str, num_results: int = 10
     ) -> list[SearchResult]:
-        """Search the web using the configured search endpoint.
+        """Search with caching, rate limiting, and retry.
 
         In production, this should be backed by a search API
         (Google Custom Search, Bing, Brave Search, etc.) or by
         an LLM with web-search tool access.
-
-        If no search endpoint is configured, returns empty results
-        with a note that search requires configuration.
         """
         if not self._search_endpoint:
             return []
 
-        try:
-            resp = self._client.get(
-                self._search_endpoint,
-                params={
-                    "q": query,
-                    "count": num_results,
-                    "key": self._search_api_key or "",
-                },
-            )
-            if resp.status_code != 200:
+        # Check cache
+        cache_key = f"{query}:{num_results}"
+        if cache_key in self._search_cache:
+            cached_results, cache_time = self._search_cache[cache_key]
+            if self._is_cache_valid(cache_time):
+                return cached_results
+
+        import time
+
+        for attempt in range(self._max_retries + 1):
+            self._rate_limit()
+            try:
+                resp = self._client.get(
+                    self._search_endpoint,
+                    params={
+                        "q": query,
+                        "count": num_results,
+                        "key": self._search_api_key or "",
+                    },
+                )
+                if resp.status_code != 200:
+                    if attempt < self._max_retries:
+                        time.sleep(2 ** attempt)
+                        continue
+                    return []
+
+                data = resp.json()
+                results: list[SearchResult] = []
+
+                for item in data.get("results", data.get("items", []))[:num_results]:
+                    results.append(SearchResult(
+                        title=item.get("title", ""),
+                        url=item.get("url", item.get("link", "")),
+                        snippet=item.get("snippet", item.get("description", "")),
+                        source=item.get("source", ""),
+                        date=item.get("date"),
+                    ))
+
+                # Cache results
+                self._search_cache[cache_key] = (results, time.monotonic())
+                return results
+
+            except Exception:
+                if attempt < self._max_retries:
+                    time.sleep(2 ** attempt)
+                    continue
                 return []
 
-            data = resp.json()
-            results: list[SearchResult] = []
-
-            # Generic JSON structure -- adapt to your search API
-            for item in data.get("results", data.get("items", []))[:num_results]:
-                results.append(SearchResult(
-                    title=item.get("title", ""),
-                    url=item.get("url", item.get("link", "")),
-                    snippet=item.get("snippet", item.get("description", "")),
-                    source=item.get("source", ""),
-                    date=item.get("date"),
-                ))
-            return results
-
-        except Exception:
-            return []
+        return []
 
     # ------------------------------------------------------------------
     # HTML extraction helpers (lightweight; production should use

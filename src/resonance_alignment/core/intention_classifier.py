@@ -12,9 +12,13 @@ be:
   3. Retrospective -- confidence rises only as follow-up evidence
      reveals what the experience actually led to.
 
-The old keyword-based indicators are retained as *weak suggestive
-signals* (not deterministic classifiers).  They are blended with
-the trajectory vector and weighted far below follow-up evidence.
+KEYWORD HINTS REMOVED (v0.4.0):
+The original design used keyword lists ('produces', 'consumes', etc.)
+as weak suggestive signals.  These were philosophically inconsistent
+with the core principle that no activity is inherently creative or
+consumptive.  At cold start (no history, no follow-ups), the correct
+answer is PENDING with ~0 confidence -- the system genuinely does not
+know yet, and pretending otherwise via keyword matching was dishonest.
 """
 
 from __future__ import annotations
@@ -32,28 +36,19 @@ class IntentionClassifier:
 
     Returns ``(IntentionSignal, confidence)`` where confidence reflects
     how much evidence supports the classification.  At t=0 with no
-    history, confidence is very low and the signal may be ``PENDING``.
+    history, confidence is very low and the signal is ``PENDING``.
+
+    Two evidence sources, in order of strength:
+      1. Follow-up evidence (strongest: what actually happened after?)
+      2. Trajectory context (what is this user's existing vector?)
+
+    At cold start (no follow-ups, no history), the system returns
+    PENDING with near-zero confidence.  This is correct -- the system
+    genuinely does not know yet.
     """
 
-    # Weak suggestive signals -- NOT deterministic.  These nudge the
-    # provisional reading when there is no trajectory history, but
-    # they carry very little weight once follow-up data exists.
-    CREATIVE_HINTS = [
-        "produces", "builds", "enhances", "teaches",
-        "shares", "improves", "creates", "generates",
-        "writes", "designs", "composes", "invents",
-        "mentors", "experiments", "practices", "learns",
-    ]
-
-    CONSUMPTIVE_HINTS = [
-        "depletes", "extracts", "uses_up", "diminishes",
-        "takes", "consumes", "exhausts", "wastes",
-    ]
-
-    # Weight of keyword hints relative to trajectory evidence
-    _HINT_WEIGHT = 0.10   # very low -- keywords are almost noise
-    _TRAJECTORY_WEIGHT = 0.40  # trajectory history
-    _FOLLOWUP_WEIGHT = 0.50  # follow-up evidence (strongest signal)
+    _TRAJECTORY_WEIGHT = 0.45  # trajectory history
+    _FOLLOWUP_WEIGHT = 0.55   # follow-up evidence (strongest signal)
 
     def classify(
         self,
@@ -70,40 +65,32 @@ class IntentionClassifier:
             Tuple of (signal, confidence).  Confidence < 0.3 means the
             system is essentially saying 'I don't know yet'.
         """
-        # 1. Weak keyword hints (almost noise, but non-zero for cold start)
-        hint_direction, hint_magnitude = self._keyword_hints(experience.description)
-
-        # 2. Trajectory context (what is this user's existing vector?)
+        # 1. Trajectory context (what is this user's existing vector?)
         traj_direction = trajectory.current_vector.direction if trajectory.has_history else 0.0
         traj_confidence = trajectory.current_vector.confidence if trajectory.has_history else 0.0
 
-        # 3. Follow-up evidence (the strongest and most reliable signal)
+        # 2. Follow-up evidence (the strongest and most reliable signal)
         fu_direction, fu_confidence = self._follow_up_evidence(experience)
 
         # Blend signals with appropriate weights
         if fu_confidence > 0:
             # We have follow-up data -- it dominates
             blended_direction = (
-                self._HINT_WEIGHT * hint_direction
-                + self._TRAJECTORY_WEIGHT * traj_direction
+                self._TRAJECTORY_WEIGHT * traj_direction
                 + self._FOLLOWUP_WEIGHT * fu_direction
             )
             blended_confidence = (
-                self._HINT_WEIGHT * hint_magnitude
-                + self._TRAJECTORY_WEIGHT * traj_confidence
+                self._TRAJECTORY_WEIGHT * traj_confidence
                 + self._FOLLOWUP_WEIGHT * fu_confidence
             )
         elif trajectory.has_history:
-            # No follow-ups but we have trajectory history
-            blended_direction = (
-                0.25 * hint_direction
-                + 0.75 * traj_direction
-            )
+            # No follow-ups but we have trajectory history -- weak prior
+            blended_direction = traj_direction
             blended_confidence = min(traj_confidence * 0.4, 0.30)
         else:
-            # Cold start: only hints, minimal confidence
-            blended_direction = hint_direction
-            blended_confidence = hint_magnitude * 0.15  # cap at ~0.15
+            # Cold start: no evidence at all.  PENDING is the honest answer.
+            blended_direction = 0.0
+            blended_confidence = 0.0
 
         # Clamp
         blended_direction = max(-1.0, min(1.0, blended_direction))
@@ -129,44 +116,28 @@ class IntentionClassifier:
     # Internal
     # ------------------------------------------------------------------
 
-    def _keyword_hints(self, text: str) -> tuple[float, float]:
-        """Extract a weak directional hint from keywords.
-
-        Returns (direction, magnitude) where direction is in [-1, 1]
-        and magnitude indicates how many keywords matched.
-        """
-        text_lower = text.lower()
-        creative_hits = sum(1 for k in self.CREATIVE_HINTS if k in text_lower)
-        consumptive_hits = sum(1 for k in self.CONSUMPTIVE_HINTS if k in text_lower)
-        total = creative_hits + consumptive_hits
-
-        if total == 0:
-            return 0.0, 0.0
-
-        direction = (creative_hits - consumptive_hits) / total  # [-1, 1]
-        magnitude = min(total / 5.0, 1.0)  # normalise, cap at 1
-        return direction, magnitude
-
     @staticmethod
     def _follow_up_evidence(experience: Experience) -> tuple[float, float]:
         """Compute direction and confidence from follow-up data.
 
         This is the most important signal: what actually happened after
-        the experience?
+        the experience?  Uses graduated creation magnitude for nuance.
         """
         if not experience.follow_ups:
             return 0.0, 0.0
 
-        creative_signals = 0
-        total_signals = 0
+        creative_signals = 0.0
+        total_signals = 0.0
         for fu in experience.follow_ups:
-            total_signals += 3  # three possible signals per follow-up
+            total_signals += 3.0  # three possible signal slots per follow-up
             if fu.created_something:
-                creative_signals += 1
+                # Use graduated magnitude (default 1.0 for backward compat)
+                mag = fu.creation_magnitude if fu.creation_magnitude > 0 else 1.0
+                creative_signals += mag
             if fu.shared_or_taught:
-                creative_signals += 1
+                creative_signals += 1.0
             if fu.inspired_further_action:
-                creative_signals += 1
+                creative_signals += 1.0
 
         if total_signals == 0:
             return 0.0, 0.0

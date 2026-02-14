@@ -82,7 +82,11 @@ class ResonanceAlignmentSystem:
     - Detects trajectory drift and unhealthy Ouroboros cycles
     """
 
-    def __init__(self, web_client: WebClient | None = None) -> None:
+    def __init__(
+        self,
+        web_client: WebClient | None = None,
+        storage: "StorageBackend | None" = None,
+    ) -> None:
         """Initialise the Improvement Axiom system.
 
         Args:
@@ -90,10 +94,16 @@ class ResonanceAlignmentSystem:
                 Defence Layers 2 (Artifact Verification) and 5
                 (Evidence-Based Extrapolation).  If None, the system
                 operates in offline/degraded mode using the three local
-                defence layers.
+                defence layers.  Use AgentWebClient when an LLM agent
+                is available for superior web understanding.
+            storage: Optional StorageBackend for trajectory persistence.
+                Without this, all data is in-memory only (lost on restart).
+                Use SupabaseStorage for production persistence.
         """
+        self._storage = storage
+
         # Core components
-        self.vector_tracker = VectorTracker()
+        self.vector_tracker = VectorTracker(storage=storage)
         self.intention_classifier = IntentionClassifier()
         self.quality_assessor = QualityAssessor()
         self.resonance_tracker = ResonanceTracker()
@@ -110,6 +120,16 @@ class ResonanceAlignmentSystem:
 
         # Pending questions store
         self.pending_questions: list[PendingQuestion] = []
+
+    @classmethod
+    def from_env(cls) -> "ResonanceAlignmentSystem":
+        """Create a configured system from environment variables.
+
+        Reads SUPABASE_URL/SUPABASE_KEY for storage.  Convenience wrapper
+        around ``resonance_alignment.config.from_env()``.
+        """
+        from resonance_alignment.config import from_env as _from_env
+        return _from_env()
 
     @property
     def has_web_access(self) -> bool:
@@ -214,6 +234,29 @@ class ResonanceAlignmentSystem:
             experience, trajectory
         )
 
+        # 15. Agent-mediated evidence (quality + vector probability)
+        quality_evidence = None
+        vector_probability = None
+        quality_resp = self.external_validator.assess_external_quality(experience)
+        if quality_resp is not None and quality_resp.success:
+            quality_evidence = {
+                "score": quality_resp.quality_score,
+                "dimensions": quality_resp.quality_dimensions,
+                "confidence": quality_resp.confidence,
+                "sources": quality_resp.source_urls,
+                "summary": quality_resp.summary,
+            }
+        vector_resp = self.external_validator.assess_vector_probability(experience)
+        if vector_resp is not None and vector_resp.success:
+            vector_probability = {
+                "creative_probability": vector_resp.creative_probability,
+                "consumptive_probability": vector_resp.consumptive_probability,
+                "key_factors": vector_resp.key_factors,
+                "resolution_horizon": vector_resp.resolution_horizon,
+                "confidence": vector_resp.confidence,
+                "sources": vector_resp.source_urls,
+            }
+
         return AssessmentResult(
             experience=experience,
             trajectory=trajectory,
@@ -222,6 +265,8 @@ class ResonanceAlignmentSystem:
             recommendations=recommendations,
             explanation=explanation,
             trajectory_evidence=trajectory_evidence,
+            quality_evidence=quality_evidence,
+            vector_probability=vector_probability,
         )
 
     # ------------------------------------------------------------------

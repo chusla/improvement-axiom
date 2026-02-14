@@ -19,6 +19,12 @@ from resonance_alignment.core.resonance_validator import ResonanceValidator
 from resonance_alignment.core.temporal_evaluator import TemporalEvaluator
 from resonance_alignment.core.propagation_tracker import PropagationTracker
 from resonance_alignment.core.question_engine import QuestionEngine
+from resonance_alignment.core.evidence import (
+    EvidenceType,
+    EvidenceRequest,
+    EvidenceResponse,
+)
+from resonance_alignment.core.agent_web_client import AgentWebClient
 
 __all__ = [
     # Models
@@ -31,6 +37,10 @@ __all__ = [
     "TimeHorizon",
     "UserTrajectory",
     "VectorSnapshot",
+    # Evidence protocol
+    "EvidenceType",
+    "EvidenceRequest",
+    "EvidenceResponse",
     # Components
     "VectorTracker",
     "IntentionClassifier",
@@ -40,4 +50,5 @@ __all__ = [
     "TemporalEvaluator",
     "PropagationTracker",
     "QuestionEngine",
+    "AgentWebClient",
 ]

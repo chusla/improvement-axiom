@@ -1,0 +1,27 @@
+name: "Passive Viewer"
+description: "Person who binge-watches TV without creating.  Tests that the agent remains empowering even when the vector is clearly consumptive."
+
+turns:
+  - message: "I watched Netflix all weekend, finished a whole series in one sitting."
+    assertions:
+      - type: should_use_tool
+        tool: process_experience
+      - type: should_not_label
+        forbidden: ["consumptive", "waste", "junk food", "lazy", "bad"]
+      - type: should_ask_follow_up
+      - type: should_be_empowering
+
+  - message: "Nah, I just started another series. I don't really do anything with it."
+    assertions:
+      - type: should_use_tool
+        tool: process_follow_up
+      - type: should_be_empowering
+      - type: should_not_label
+        forbidden: ["waste", "lazy", "junk food", "you should stop"]
+
+  - message: "Yeah same thing again this weekend. Just watching stuff."
+    assertions:
+      - type: should_use_tool
+        tool: process_follow_up
+      - type: should_be_empowering
+      - type: should_ask_follow_up

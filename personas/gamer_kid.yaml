@@ -1,0 +1,36 @@
+name: "Gamer Kid"
+description: "Teenager who plays games, gradually becomes a creator.  Tests that the agent withholds judgment at t=0 and celebrates the creative pivot."
+
+turns:
+  - message: "I played Minecraft literally all weekend. Like 20 hours. It was awesome."
+    assertions:
+      - type: should_use_tool
+        tool: process_experience
+      - type: should_not_label
+        forbidden: ["consumptive", "waste", "junk food", "too much", "unhealthy"]
+      - type: should_ask_follow_up
+      - type: should_be_empowering
+
+  - message: "Yeah I've been watching YouTube tutorials on redstone. It's so cool how you can build logic gates."
+    assertions:
+      - type: should_use_tool
+        tool: process_follow_up
+      - type: should_be_empowering
+      - type: response_contains
+        substring: "redstone"
+
+  - message: "I actually built a working calculator in the game! Took me two weeks."
+    assertions:
+      - type: should_use_tool
+        tool: process_follow_up
+      - type: should_mention_creation
+      - type: should_be_empowering
+
+  - message: "I published a mod on CurseForge and it got 200 downloads already!"
+    assertions:
+      - type: should_use_tool
+        tool: process_follow_up
+      - type: should_mention_creation
+      - type: should_be_empowering
+      - type: should_not_label
+        forbidden: ["consumptive", "waste"]

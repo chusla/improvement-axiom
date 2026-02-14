@@ -11,9 +11,14 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Optional
+
+
+def _utcnow() -> datetime:
+    """Timezone-aware UTC now, replacing deprecated datetime.utcnow()."""
+    return datetime.now(timezone.utc)
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +73,7 @@ class FollowUp:
 
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     experience_id: str = ""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=_utcnow)
     source: str = "user_response"  # 'user_response' | 'behavioral' | 'system_observation'
     content: str = ""
 
@@ -77,6 +82,13 @@ class FollowUp:
     creation_description: str = ""
     shared_or_taught: bool = False
     inspired_further_action: bool = False
+
+    # Graduated creation: 0.0 = nothing, 0.25 = sketched/started,
+    # 0.5 = partial draft/prototype, 0.75 = substantial work,
+    # 1.0 = completed and shipped.  When created_something is True
+    # but creation_magnitude is 0.0, it defaults to 1.0 for backward
+    # compatibility.
+    creation_magnitude: float = 0.0
 
 
 @dataclass
@@ -88,7 +100,7 @@ class VectorSnapshot:
     - confidence: 0.0 (no evidence) to 1.0 (extensive evidence)
     """
 
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=_utcnow)
     direction: float = 0.0
     magnitude: float = 0.0
     confidence: float = 0.0
@@ -119,7 +131,7 @@ class Experience:
     description: str = ""
     context: str = ""
     user_rating: float = 0.5
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=_utcnow)
 
     # Evolving evidence
     follow_ups: list[FollowUp] = field(default_factory=list)
@@ -182,7 +194,7 @@ class PendingQuestion:
     experience_id: str = ""
     user_id: str = ""
     question: str = ""
-    ask_after: datetime = field(default_factory=datetime.utcnow)
+    ask_after: datetime = field(default_factory=_utcnow)
     horizon: TimeHorizon = TimeHorizon.SHORT_TERM
     asked: bool = False
     response: Optional[FollowUp] = None
@@ -206,7 +218,7 @@ class Artifact:
     url: str = ""
     platform: str = ""          # 'x', 'github', 'medium', 'wiki', etc.
     user_claim: str = ""        # what the user says this artifact is
-    submitted_at: datetime = field(default_factory=datetime.utcnow)
+    submitted_at: datetime = field(default_factory=_utcnow)
 
 
 @dataclass
@@ -219,7 +231,7 @@ class ArtifactVerification:
     content_substantive: bool = False  # real substance, not trivial?
     timestamp_plausible: bool = False  # artifact date makes sense?
     relevance_score: float = 0.0      # 0-1, how related to claimed experience
-    verified_at: datetime = field(default_factory=datetime.utcnow)
+    verified_at: datetime = field(default_factory=_utcnow)
     notes: str = ""
 
     # Overall status
@@ -255,7 +267,7 @@ class TrajectoryEvidence:
 
     query: str = ""
     hypotheses: list[ExtrapolationHypothesis] = field(default_factory=list)
-    search_timestamp: datetime = field(default_factory=datetime.utcnow)
+    search_timestamp: datetime = field(default_factory=_utcnow)
     total_sources_found: int = 0
     note: str = ""  # caveats about the evidence
 
@@ -283,6 +295,10 @@ class AssessmentResult:
     # Defence layers 2 & 5 (require internet)
     artifact_verifications: list[ArtifactVerification] = field(default_factory=list)
     trajectory_evidence: Optional[TrajectoryEvidence] = None
+
+    # Agent-mediated evidence (new in v0.4.0 -- requires AgentWebClient)
+    quality_evidence: Optional[dict] = None          # external quality signals
+    vector_probability: Optional[dict] = None        # creative vs consumptive probability
 
     @property
     def is_provisional(self) -> bool:

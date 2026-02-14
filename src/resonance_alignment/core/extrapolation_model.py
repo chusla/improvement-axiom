@@ -35,7 +35,7 @@ DESIGN PRINCIPLES:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from resonance_alignment.core.models import (
     Experience,
@@ -99,7 +99,7 @@ class ExtrapolationModel:
             return TrajectoryEvidence(
                 query=experience.description,
                 hypotheses=[],
-                search_timestamp=datetime.utcnow(),
+                search_timestamp=datetime.now(timezone.utc),
                 total_sources_found=len(all_results),
                 note=(
                     "Insufficient public evidence found for this specific "
@@ -117,7 +117,7 @@ class ExtrapolationModel:
         return TrajectoryEvidence(
             query=experience.description,
             hypotheses=hypotheses,
-            search_timestamp=datetime.utcnow(),
+            search_timestamp=datetime.now(timezone.utc),
             total_sources_found=len(all_results),
             note=self._build_evidence_note(len(all_results), len(hypotheses)),
         )

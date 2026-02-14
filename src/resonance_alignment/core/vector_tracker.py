@@ -14,7 +14,7 @@ labels an activity; it tracks what activities *lead to*.
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 
@@ -37,6 +37,10 @@ class VectorTracker:
     supports the reading).
 
     Confidence starts near zero at t=0 and grows with follow-up evidence.
+
+    Optionally backed by a StorageBackend for persistence across
+    sessions.  Without a backend, trajectories live in memory only
+    (current behavior).
     """
 
     # How quickly confidence decays for experiences without follow-ups.
@@ -51,8 +55,9 @@ class VectorTracker:
     # Recency weighting: experiences older than this contribute less.
     _RECENCY_HALFLIFE_DAYS = 90.0
 
-    def __init__(self) -> None:
+    def __init__(self, storage: "StorageBackend | None" = None) -> None:
         self.trajectories: dict[str, UserTrajectory] = {}
+        self._storage = storage
 
     # ------------------------------------------------------------------
     # Public API
@@ -73,7 +78,7 @@ class VectorTracker:
         trajectory informs (but does not determine) the provisional
         reading.
         """
-        ts = timestamp or datetime.utcnow()
+        ts = timestamp or datetime.now(timezone.utc)
         trajectory = self._get_or_create_trajectory(user_id)
 
         experience = Experience(
@@ -164,6 +169,12 @@ class VectorTracker:
 
     def _get_or_create_trajectory(self, user_id: str) -> UserTrajectory:
         if user_id not in self.trajectories:
+            # Try loading from persistent storage
+            if self._storage is not None:
+                loaded = self._storage.load_trajectory(user_id)
+                if loaded is not None:
+                    self.trajectories[user_id] = loaded
+                    return loaded
             self.trajectories[user_id] = UserTrajectory(user_id=user_id)
         return self.trajectories[user_id]
 
@@ -215,7 +226,10 @@ class VectorTracker:
         for fu in experience.follow_ups:
             signal = 0.0
             if fu.created_something:
-                signal += self._CREATION_WEIGHT
+                # Use graduated magnitude: default to 1.0 if created_something
+                # is True but creation_magnitude wasn't explicitly set.
+                mag = fu.creation_magnitude if fu.creation_magnitude > 0 else 1.0
+                signal += self._CREATION_WEIGHT * mag
             if fu.shared_or_taught:
                 signal += self._SHARING_WEIGHT
             if fu.inspired_further_action:
@@ -242,7 +256,7 @@ class VectorTracker:
         confidence = min(0.15 + n_follow_ups * 0.15, 0.95)
 
         return VectorSnapshot(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             direction=direction,
             magnitude=magnitude,
             confidence=confidence,
@@ -251,7 +265,7 @@ class VectorTracker:
 
     def _aggregate_vector(self, trajectory: UserTrajectory) -> VectorSnapshot:
         """Aggregate across all experiences with recency weighting."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         weighted_directions: list[float] = []
         weighted_magnitudes: list[float] = []
         weighted_confidences: list[float] = []
@@ -304,6 +318,10 @@ class VectorTracker:
                 trajectory.vector_history[-1].direction
                 - trajectory.vector_history[-2].direction
             )
+
+        # Persist if storage backend is configured
+        if self._storage is not None:
+            self._storage.save_trajectory(trajectory)
 
     @staticmethod
     def _direction_to_signal(direction: float) -> IntentionSignal:

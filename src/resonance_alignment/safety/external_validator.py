@@ -8,7 +8,7 @@ their outcomes*.  The system NEVER groups, compares, or profiles
 individuals by creed, race, ethnicity, gender, religion, political
 affiliation, or any other identity attribute.
 
-This module integrates three sources of external evidence:
+This module integrates external evidence sources:
 
 1. ARTIFACT VERIFICATION (Defence Layer 2)
    User-presented artifacts verified via web access.
@@ -20,9 +20,16 @@ This module integrates three sources of external evidence:
 3. EVIDENCE-BASED EXTRAPOLATION (Defence Layer 5)
    Public web evidence about what similar actions typically lead to.
 
-If web access is unavailable, the validator degrades gracefully --
-it still checks trajectory consistency using local data, and reports
-lower confidence for the web-dependent layers.
+4. QUALITY EVIDENCE (new in v0.4.0)
+   External quality signals from web search.
+
+5. VECTOR PROBABILITY (new in v0.4.0)
+   Statistical evidence about creative vs consumptive outcomes.
+
+When an AgentWebClient is provided, the LLM agent fulfills evidence
+requests using its superior web search and content understanding.
+Falls back to HttpxWebClient for standalone use, or degrades
+gracefully when offline.
 """
 
 from __future__ import annotations
@@ -35,6 +42,11 @@ from resonance_alignment.core.models import (
     UserTrajectory,
 )
 from resonance_alignment.core.web_client import WebClient
+from resonance_alignment.core.evidence import (
+    EvidenceType,
+    EvidenceRequest,
+    EvidenceResponse,
+)
 from resonance_alignment.safety.artifact_verifier import ArtifactVerifier
 from resonance_alignment.core.extrapolation_model import ExtrapolationModel
 
@@ -47,6 +59,10 @@ class ExternalValidator:
 
     All checks are action-based and outcome-based.  No demographic,
     identity, or group-membership comparisons are permitted.
+
+    When provided with an AgentWebClient, evidence requests are
+    fulfilled by the LLM agent's native capabilities (web search,
+    content understanding, reasoning) rather than crude HTTP + regex.
     """
 
     DIVERGENCE_THRESHOLD = 0.3
@@ -62,18 +78,24 @@ class ExternalValidator:
         """Initialise with optional web access.
 
         Args:
-            web_client: WebClient for internet access.  If None,
-                web-dependent layers (artifact verification and
-                extrapolation) are disabled; the validator operates
-                in offline/degraded mode.
+            web_client: WebClient for internet access.  Can be:
+                - AgentWebClient: LLM agent fulfills evidence requests
+                - HttpxWebClient: standalone HTTP access
+                - MockWebClient: testing
+                - None: offline/degraded mode
         """
         self._web = web_client
         self._artifact_verifier: ArtifactVerifier | None = None
         self._extrapolation_model: ExtrapolationModel | None = None
+        self._has_agent: bool = False
 
         if web_client is not None:
             self._artifact_verifier = ArtifactVerifier(web_client)
             self._extrapolation_model = ExtrapolationModel(web_client)
+
+            # Check if we have an AgentWebClient for richer evidence
+            from resonance_alignment.core.agent_web_client import AgentWebClient
+            self._has_agent = isinstance(web_client, AgentWebClient)
 
     @property
     def has_web_access(self) -> bool:
@@ -175,6 +197,49 @@ class ExternalValidator:
             )
 
         return self._extrapolation_model.hypothesise(experience, trajectory)
+
+    # ------------------------------------------------------------------
+    # Quality Evidence (new in v0.4.0 -- requires AgentWebClient)
+    # ------------------------------------------------------------------
+
+    def assess_external_quality(
+        self, experience: Experience
+    ) -> EvidenceResponse | None:
+        """Get external quality signals using the agent's web search.
+
+        Searches for expert reviews, engagement depth metrics, skill
+        development evidence, community quality signals, and durability.
+
+        Returns None if no AgentWebClient is configured.
+        """
+        if not self._has_agent:
+            return None
+
+        from resonance_alignment.core.agent_web_client import AgentWebClient
+        agent: AgentWebClient = self._web  # type: ignore[assignment]
+        return agent.assess_quality(experience.description)
+
+    # ------------------------------------------------------------------
+    # Vector Probability (new in v0.4.0 -- requires AgentWebClient)
+    # ------------------------------------------------------------------
+
+    def assess_vector_probability(
+        self, experience: Experience
+    ) -> EvidenceResponse | None:
+        """Get probability of creative vs consumptive vector from public evidence.
+
+        Searches for research on outcomes of this activity, statistics
+        on creative vs consumptive paths, key inflection points, and
+        typical resolution horizons.
+
+        Returns None if no AgentWebClient is configured.
+        """
+        if not self._has_agent:
+            return None
+
+        from resonance_alignment.core.agent_web_client import AgentWebClient
+        agent: AgentWebClient = self._web  # type: ignore[assignment]
+        return agent.assess_vector_probability(experience.description)
 
     # ------------------------------------------------------------------
     # Internal checks (work with or without web access)

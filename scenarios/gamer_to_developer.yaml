@@ -1,0 +1,70 @@
+name: "Gamer to Developer"
+description: "Kid plays games, starts modding, publishes mod, gets downloads.  Classic creative trajectory that is invisible at t=0."
+user_id: "gamer_kid"
+expected_final_arc: "improving"
+tags: [creative, transformation]
+
+steps:
+  - action: experience
+    params:
+      description: "Played Minecraft all weekend"
+      user_rating: 0.9
+      context: "First time trying creative mode"
+    assertions:
+      - field: experience.intention_confidence
+        op: "<"
+        value: 0.2
+        label: "Should be low confidence at t=0"
+      - field: experience.provisional_intention
+        op: in
+        value: [pending, mixed]
+        label: "Should not label as creative yet"
+
+  - action: follow_up
+    delay_days: 14
+    params:
+      content: "Started watching YouTube tutorials on redstone circuits"
+      created_something: false
+      inspired_further_action: true
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: ">"
+        value: -0.5
+        label: "Should not be strongly consumptive yet"
+
+  - action: follow_up
+    delay_days: 30
+    params:
+      content: "Built a working calculator in Minecraft using redstone"
+      created_something: true
+      creation_magnitude: 0.5
+      creation_description: "Redstone calculator"
+      inspired_further_action: true
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: ">"
+        value: 0.0
+        label: "Vector should shift creative"
+
+  - action: follow_up
+    delay_days: 60
+    params:
+      content: "Published a mod on CurseForge, got 200 downloads"
+      created_something: true
+      creation_magnitude: 1.0
+      creation_description: "Published Minecraft mod"
+      shared_or_taught: true
+      inspired_further_action: true
+    assertions:
+      - field: experience.provisional_intention
+        op: in
+        value: [creative]
+        label: "Should be confidently creative by now"
+      - field: experience.intention_confidence
+        op: ">"
+        value: 0.3
+        label: "Confidence should have risen substantially"
+      - field: trajectory.current_vector.direction
+        op: ">"
+        value: 0.2
+        label: "Vector solidly creative"

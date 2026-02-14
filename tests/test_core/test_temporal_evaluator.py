@@ -1,7 +1,7 @@
 """Tests for TemporalEvaluator -- the 'long arc' of Better."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from resonance_alignment.core.temporal_evaluator import TemporalEvaluator
 from resonance_alignment.core.models import (
@@ -117,7 +117,7 @@ class TestHorizonEvaluation:
 
     def test_short_term_with_creative_follow_up(self):
         evaluator = TemporalEvaluator()
-        ts = datetime.utcnow()
+        ts = datetime.now(timezone.utc)
         exp = Experience(user_rating=0.8, timestamp=ts)
         exp.follow_ups.append(FollowUp(
             timestamp=ts + timedelta(hours=12),

@@ -152,6 +152,11 @@ class QualityAssessor:
 
         # --- Intensity rate (what FRACTION responded deeply?) ---
         # This is the anti-virality measure: rate, not count.
+        # Uses graduated creation magnitude for finer signal.
+        created_magnitude_sum = sum(
+            (f.creation_magnitude if f.creation_magnitude > 0 else 1.0)
+            for f in experience.follow_ups if f.created_something
+        )
         created = sum(1 for f in experience.follow_ups if f.created_something)
         shared = sum(1 for f in experience.follow_ups if f.shared_or_taught)
         inspired = sum(
@@ -167,9 +172,11 @@ class QualityAssessor:
 
         # --- Response breadth (multiple types = deeper engagement) ---
         # Created + shared + inspired together is much stronger than any alone.
+        # Creation breadth is weighted by average magnitude.
+        avg_creation_mag = (created_magnitude_sum / created) if created > 0 else 0.0
         breadth = 0.0
         if created > 0:
-            breadth += 0.4
+            breadth += 0.4 * avg_creation_mag
         if shared > 0:
             breadth += 0.3
         if inspired > 0:

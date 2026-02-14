@@ -1,0 +1,35 @@
+name: "Late Bloomer"
+description: "Long-time consumer who suddenly starts creating.  Tests that the agent recognises and celebrates the creative pivot."
+
+turns:
+  - message: "I've been reading cooking blogs for months but never actually cooked anything."
+    assertions:
+      - type: should_use_tool
+        tool: process_experience
+      - type: should_not_label
+        forbidden: ["consumptive", "waste", "lazy"]
+      - type: should_ask_follow_up
+      - type: should_be_empowering
+
+  - message: "Still just reading recipes honestly. I bookmark a ton but never make them."
+    assertions:
+      - type: should_use_tool
+        tool: process_follow_up
+      - type: should_be_empowering
+
+  - message: "OK so I finally tried making sourdough! It took me 3 days but it actually turned out decent."
+    assertions:
+      - type: should_use_tool
+        tool: process_follow_up
+      - type: should_mention_creation
+      - type: should_be_empowering
+      - type: should_not_label
+        forbidden: ["consumptive", "waste"]
+
+  - message: "I started a food blog! I'm documenting my whole baking journey with photos and recipes."
+    assertions:
+      - type: should_use_tool
+        tool: process_follow_up
+      - type: should_mention_creation
+      - type: should_be_empowering
+      - type: should_cite_evidence

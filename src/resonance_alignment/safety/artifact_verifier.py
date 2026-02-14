@@ -35,7 +35,7 @@ under sustained temporal scrutiny.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from resonance_alignment.core.models import (
     Artifact,
@@ -120,7 +120,7 @@ class ArtifactVerifier:
             content_substantive=is_substantive,
             timestamp_plausible=timestamp_ok,
             relevance_score=relevance,
-            verified_at=datetime.utcnow(),
+            verified_at=datetime.now(timezone.utc),
             status=status,
             notes=self._build_notes(
                 page, is_substantive, timestamp_ok, relevance

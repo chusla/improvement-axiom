@@ -1,0 +1,69 @@
+name: "Local Craftsman"
+description: "Artisan who creates offline.  Never shares online but steadily produces physical artifacts.  Tests that creation without sharing is still creative."
+user_id: "local_woodworker"
+expected_final_arc: "improving"
+tags: [creative, offline]
+
+steps:
+  - action: experience
+    params:
+      description: "Spent the afternoon in the workshop making a cutting board"
+      user_rating: 0.8
+      context: "Weekend woodworking hobby"
+    assertions:
+      - field: experience.intention_confidence
+        op: "<"
+        value: 0.2
+        label: "Low confidence initially"
+
+  - action: follow_up
+    delay_days: 7
+    params:
+      content: "Finished the cutting board and gave it to a neighbour"
+      created_something: true
+      creation_magnitude: 0.8
+      creation_description: "Handmade walnut cutting board"
+      shared_or_taught: false
+      inspired_further_action: true
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: ">"
+        value: 0.0
+        label: "Creation should push vector creative"
+
+  - action: follow_up
+    delay_days: 21
+    params:
+      content: "Started building a bookshelf from reclaimed wood"
+      created_something: true
+      creation_magnitude: 0.5
+      creation_description: "Bookshelf in progress"
+      inspired_further_action: true
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: ">"
+        value: 0.1
+        label: "Sustained creation strengthens creative vector"
+      - field: experience.intention_confidence
+        op: ">"
+        value: 0.2
+        label: "Confidence rising with evidence"
+
+  - action: follow_up
+    delay_days: 45
+    params:
+      content: "Finished the bookshelf and started teaching grandson basic joinery"
+      created_something: true
+      creation_magnitude: 1.0
+      creation_description: "Completed reclaimed wood bookshelf"
+      shared_or_taught: true
+      inspired_further_action: true
+    assertions:
+      - field: experience.provisional_intention
+        op: in
+        value: [creative]
+        label: "Solidly creative with teaching"
+      - field: trajectory.current_vector.direction
+        op: ">"
+        value: 0.3
+        label: "Strong creative trajectory"

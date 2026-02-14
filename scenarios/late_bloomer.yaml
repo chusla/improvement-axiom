@@ -1,0 +1,74 @@
+name: "Late Bloomer"
+description: "Long period of consumption followed by a sudden creative pivot.  Tests that the system doesn't lock people into a consumptive label permanently."
+user_id: "late_bloomer"
+expected_final_arc: "improving"
+tags: [creative, transformation, long_arc]
+
+steps:
+  - action: experience
+    params:
+      description: "Read a bunch of cooking blogs all day"
+      user_rating: 0.6
+      context: "Browsing recipes online"
+    assertions:
+      - field: experience.intention_confidence
+        op: "<"
+        value: 0.2
+        label: "Low confidence at start"
+
+  - action: follow_up
+    delay_days: 14
+    params:
+      content: "Kept reading recipes, bookmarked a lot but didn't cook"
+      created_something: false
+      inspired_further_action: false
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: "<"
+        value: 0.1
+        label: "Leaning consumptive"
+
+  - action: follow_up
+    delay_days: 30
+    params:
+      content: "Still just reading recipes and watching cooking shows"
+      created_something: false
+      inspired_further_action: false
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: "<"
+        value: 0.0
+        label: "Established consumptive pattern"
+
+  - action: follow_up
+    delay_days: 60
+    params:
+      content: "Finally tried making the sourdough recipe I've been reading about"
+      created_something: true
+      creation_magnitude: 0.5
+      creation_description: "First sourdough loaf"
+      inspired_further_action: true
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: ">"
+        value: -0.3
+        label: "Vector should shift toward creative after first creation"
+
+  - action: follow_up
+    delay_days: 90
+    params:
+      content: "Started a food blog documenting my baking journey"
+      created_something: true
+      creation_magnitude: 0.8
+      creation_description: "Food blog with photos and recipes"
+      shared_or_taught: true
+      inspired_further_action: true
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: ">"
+        value: 0.0
+        label: "Should be clearly creative now"
+      - field: experience.provisional_intention
+        op: in
+        value: [creative, mixed]
+        label: "Should recognise the creative pivot"

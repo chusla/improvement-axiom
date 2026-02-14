@@ -1,0 +1,59 @@
+name: "Adversarial Faker"
+description: "Someone claims to create but never actually does.  Says 'I made a thing' but no artifacts, no follow-through.  Tests that the system doesn't trust self-report alone."
+user_id: "faker_user"
+expected_final_arc: "stable"
+tags: [adversarial, gaming]
+
+steps:
+  - action: experience
+    params:
+      description: "I spent all day painting a masterpiece"
+      user_rating: 1.0
+      context: "Art studio session"
+    assertions:
+      - field: experience.intention_confidence
+        op: "<"
+        value: 0.2
+        label: "Low confidence -- self-report only"
+
+  - action: follow_up
+    delay_days: 7
+    params:
+      content: "I finished the painting, it's amazing"
+      created_something: true
+      creation_magnitude: 1.0
+      creation_description: "Oil painting"
+      shared_or_taught: false
+      inspired_further_action: false
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: ">"
+        value: -0.5
+        label: "Some creative signal from claimed creation"
+
+  - action: follow_up
+    delay_days: 14
+    params:
+      content: "Actually I didn't finish it. But I watched some art videos"
+      created_something: false
+      inspired_further_action: false
+    assertions:
+      - field: trajectory.current_vector.direction
+        op: "<"
+        value: 0.5
+        label: "Contradictory signal should dampen creative confidence"
+
+  - action: follow_up
+    delay_days: 30
+    params:
+      content: "I made another painting -- trust me it's great"
+      created_something: true
+      creation_magnitude: 1.0
+      creation_description: "Another painting"
+      shared_or_taught: false
+      inspired_further_action: false
+    assertions:
+      - field: experience.intention_confidence
+        op: "<"
+        value: 0.8
+        label: "Confidence should not be very high -- inconsistent signals"

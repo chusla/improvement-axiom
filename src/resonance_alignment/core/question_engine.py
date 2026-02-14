@@ -15,7 +15,7 @@ revealing the true vector over time.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from resonance_alignment.core.models import (
     Experience,
@@ -73,7 +73,7 @@ class QuestionEngine:
         as_of: datetime | None = None,
     ) -> list[PendingQuestion]:
         """Return questions that are due to be asked."""
-        now = as_of or datetime.utcnow()
+        now = as_of or datetime.now(timezone.utc)
         return [q for q in pending if not q.asked and q.ask_after <= now]
 
     # ------------------------------------------------------------------

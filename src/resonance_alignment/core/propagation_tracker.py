@@ -17,7 +17,7 @@ observable shared actions and outcomes, never by identity attributes.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 from resonance_alignment.core.models import Experience, UserTrajectory
 
@@ -29,7 +29,7 @@ class CreationEvent:
     id: str = ""
     user_id: str = ""
     description: str = ""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     inspired_by_experience_id: str | None = None
 
 
@@ -58,7 +58,7 @@ class PropagationTracker:
         event = CreationEvent(
             user_id=user_id,
             description=description,
-            timestamp=timestamp or datetime.utcnow(),
+            timestamp=timestamp or datetime.now(timezone.utc),
             inspired_by_experience_id=inspired_by_experience_id,
         )
         self.creation_events.setdefault(user_id, []).append(event)
