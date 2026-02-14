@@ -25,7 +25,7 @@ except ImportError:
 
 from resonance_alignment.system import ResonanceAlignmentSystem
 from resonance_alignment.core.models import AssessmentResult
-from resonance_alignment.storage.memory import InMemoryStorage
+from resonance_alignment.config import get_storage
 
 
 # ------------------------------------------------------------------
@@ -432,9 +432,15 @@ def create_interface():
         # ----------------------------------------------------------
 
         def _ensure_system(state: dict) -> dict:
-            """Lazily initialize system and agent."""
+            """Lazily initialize system, storage, and agent."""
             if state.get("system") is None:
-                storage = InMemoryStorage()
+                storage = get_storage()
+                state["storage"] = storage
+
+                # Generate a session_id for conversation logging
+                import uuid
+                state["session_id"] = str(uuid.uuid4())[:12]
+
                 state["system"] = ResonanceAlignmentSystem(storage=storage)
                 if has_agent:
                     try:
@@ -459,9 +465,22 @@ def create_interface():
                 return "", chat_history, state, metrics, _format_metrics_display(metrics)
 
             state = _ensure_system(state)
+            storage = state.get("storage")
+            session_id = state.get("session_id", "unknown")
+            user_id = state.get("user_id", "unknown")
 
             # Add user message to chat
             chat_history = chat_history + [{"role": "user", "content": message}]
+
+            # Log user message
+            if storage:
+                storage.log_conversation(
+                    session_id=session_id,
+                    user_id=user_id,
+                    role="user",
+                    content=message,
+                    mode="agent" if state.get("agent") else "direct",
+                )
 
             agent = state.get("agent")
 
@@ -496,6 +515,17 @@ def create_interface():
 
             chat_history = chat_history + [{"role": "assistant", "content": bot_text}]
             metrics_md = _format_metrics_display(metrics)
+
+            # Log assistant response with metrics snapshot
+            if storage:
+                storage.log_conversation(
+                    session_id=session_id,
+                    user_id=user_id,
+                    role="assistant",
+                    content=bot_text,
+                    mode="agent" if state.get("agent") else "direct",
+                    metrics=metrics,
+                )
 
             return "", chat_history, state, metrics, metrics_md
 

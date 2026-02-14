@@ -25,6 +25,7 @@ class InMemoryStorage(StorageBackend):
 
     def __init__(self) -> None:
         self._trajectories: dict[str, UserTrajectory] = {}
+        self._conversation_logs: list[dict] = []
 
     def load_trajectory(self, user_id: str) -> UserTrajectory | None:
         traj = self._trajectories.get(user_id)
@@ -71,6 +72,40 @@ class InMemoryStorage(StorageBackend):
             if e.id == experience_id:
                 e.follow_ups.append(copy.deepcopy(follow_up))
                 return
+
+    def log_conversation(
+        self,
+        session_id: str,
+        user_id: str,
+        role: str,
+        content: str,
+        mode: str = "direct",
+        metrics: dict | None = None,
+    ) -> None:
+        from datetime import datetime, timezone
+
+        self._conversation_logs.append({
+            "session_id": session_id,
+            "user_id": user_id,
+            "role": role,
+            "content": content,
+            "mode": mode,
+            "metrics": metrics,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+    def get_conversation_logs(
+        self,
+        session_id: str | None = None,
+        user_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        logs = self._conversation_logs
+        if session_id:
+            logs = [l for l in logs if l["session_id"] == session_id]
+        if user_id:
+            logs = [l for l in logs if l["user_id"] == user_id]
+        return logs[-limit:]
 
     def health_check(self) -> bool:
         return True

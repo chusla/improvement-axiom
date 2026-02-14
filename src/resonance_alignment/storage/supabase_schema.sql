@@ -71,8 +71,25 @@ CREATE INDEX IF NOT EXISTS idx_vector_snapshots_user_id ON vector_snapshots(user
 CREATE INDEX IF NOT EXISTS idx_vector_snapshots_experience_id ON vector_snapshots(experience_id);
 CREATE INDEX IF NOT EXISTS idx_vector_snapshots_created_at ON vector_snapshots(created_at);
 
+-- Conversation logs: raw chat messages for observability & review
+CREATE TABLE IF NOT EXISTS conversation_logs (
+    id BIGSERIAL PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+    content TEXT NOT NULL,
+    mode TEXT DEFAULT 'direct',               -- 'agent' or 'direct'
+    metrics JSONB,                             -- framework metrics snapshot at this turn
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_logs_session ON conversation_logs(session_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_logs_user ON conversation_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_logs_created_at ON conversation_logs(created_at);
+
 -- Row Level Security (enable for production)
 -- ALTER TABLE trajectories ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE experiences ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE follow_ups ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE vector_snapshots ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE conversation_logs ENABLE ROW LEVEL SECURITY;

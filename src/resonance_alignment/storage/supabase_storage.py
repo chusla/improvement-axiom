@@ -317,6 +317,57 @@ class SupabaseStorage(StorageBackend):
         )
 
     # ------------------------------------------------------------------
+    # Conversation logs
+    # ------------------------------------------------------------------
+
+    def log_conversation(
+        self,
+        session_id: str,
+        user_id: str,
+        role: str,
+        content: str,
+        mode: str = "direct",
+        metrics: dict | None = None,
+    ) -> None:
+        """Persist a chat message to the conversation_logs table."""
+        try:
+            self._client.table("conversation_logs").insert({
+                "session_id": session_id,
+                "user_id": user_id,
+                "role": role,
+                "content": content,
+                "mode": mode,
+                "metrics": json.dumps(metrics) if metrics else None,
+            }).execute()
+        except Exception:
+            # Non-critical -- don't break the chat if logging fails
+            pass
+
+    def get_conversation_logs(
+        self,
+        session_id: str | None = None,
+        user_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        """Retrieve conversation logs from Supabase."""
+        query = self._client.table("conversation_logs").select("*")
+        if session_id:
+            query = query.eq("session_id", session_id)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        query = query.order("created_at", desc=True).limit(limit)
+        result = query.execute()
+        rows = result.data or []
+        # Parse metrics JSON back to dict
+        for row in rows:
+            if row.get("metrics") and isinstance(row["metrics"], str):
+                try:
+                    row["metrics"] = json.loads(row["metrics"])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        return list(reversed(rows))  # chronological order
+
+    # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 

@@ -71,6 +71,38 @@ class StorageBackend(ABC):
         """Persist a follow-up observation."""
 
     # ------------------------------------------------------------------
+    # Conversation logs
+    # ------------------------------------------------------------------
+
+    def log_conversation(
+        self,
+        session_id: str,
+        user_id: str,
+        role: str,
+        content: str,
+        mode: str = "direct",
+        metrics: dict | None = None,
+    ) -> None:
+        """Log a single chat message for observability.
+
+        Default implementation is a no-op; SupabaseStorage persists
+        to the conversation_logs table.
+        """
+
+    def get_conversation_logs(
+        self,
+        session_id: str | None = None,
+        user_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        """Retrieve conversation logs, optionally filtered.
+
+        Returns a list of dicts with keys: session_id, user_id, role,
+        content, mode, metrics, created_at.
+        """
+        return []
+
+    # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
