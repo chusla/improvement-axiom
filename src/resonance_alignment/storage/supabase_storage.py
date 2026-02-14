@@ -23,8 +23,27 @@ append-only (full history preserved for the long arc).
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any
+
+
+def _safe_fromisoformat(value: str) -> datetime:
+    """Parse an ISO-format datetime string with any fractional-second precision.
+
+    Python < 3.11 only accepts 0, 3, or 6 fractional digits.  Supabase
+    (PostgreSQL) may return 5 digits (e.g. ``...47.71966+00:00``).
+    This helper normalises to 6 digits before parsing.
+    """
+    # Match fractional seconds of any length
+    m = re.search(r'\.(\d+)', value)
+    if m:
+        frac = m.group(1)
+        if len(frac) not in (0, 3, 6):
+            # Pad or truncate to 6 digits
+            normalised = frac[:6].ljust(6, '0')
+            value = value[:m.start(1)] + normalised + value[m.end(1):]
+    return datetime.fromisoformat(value)
 
 from resonance_alignment.core.models import (
     Experience,
@@ -274,7 +293,7 @@ class SupabaseStorage(StorageBackend):
             description=row.get("description", ""),
             context=row.get("context", ""),
             user_rating=row.get("user_rating", 0.5),
-            timestamp=datetime.fromisoformat(row["created_at"]),
+            timestamp=_safe_fromisoformat(row["created_at"]),
             provisional_intention=IntentionSignal(
                 row.get("provisional_intention", "pending")
             ),
@@ -296,7 +315,7 @@ class SupabaseStorage(StorageBackend):
         return FollowUp(
             id=row["id"],
             experience_id=row.get("experience_id", ""),
-            timestamp=datetime.fromisoformat(row["created_at"]),
+            timestamp=_safe_fromisoformat(row["created_at"]),
             source=row.get("source", "user_response"),
             content=row.get("content", ""),
             created_something=row.get("created_something", False),
@@ -309,7 +328,7 @@ class SupabaseStorage(StorageBackend):
     @staticmethod
     def _row_to_vector_snapshot(row: dict[str, Any]) -> VectorSnapshot:
         return VectorSnapshot(
-            timestamp=datetime.fromisoformat(row["created_at"]),
+            timestamp=_safe_fromisoformat(row["created_at"]),
             direction=row.get("direction", 0.0),
             magnitude=row.get("magnitude", 0.0),
             confidence=row.get("confidence", 0.0),
