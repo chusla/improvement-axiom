@@ -76,7 +76,7 @@ class TestFollowUpDominates:
         signal, confidence = classifier.classify(exp, traj)
 
         # Follow-up evidence of creation should push toward creative
-        assert signal in (IntentionSignal.CREATIVE, IntentionSignal.MIXED)
+        assert signal in (IntentionSignal.CREATIVE_INTENT, IntentionSignal.MIXED)
         assert confidence > 0.15  # some confidence from follow-up
 
     def test_no_follow_up_creation_leans_consumptive(self):
@@ -93,7 +93,7 @@ class TestFollowUpDominates:
 
         signal, confidence = classifier.classify(exp, traj)
 
-        assert signal == IntentionSignal.CONSUMPTIVE
+        assert signal == IntentionSignal.CONSUMPTIVE_INTENT
 
 
 class TestTrajectoryContext:
@@ -111,7 +111,7 @@ class TestTrajectoryContext:
         signal, confidence = classifier.classify(exp, traj)
 
         # Should lean creative due to trajectory, but confidence still moderate
-        assert signal in (IntentionSignal.CREATIVE, IntentionSignal.MIXED)
+        assert signal in (IntentionSignal.CREATIVE_INTENT, IntentionSignal.MIXED)
 
 
 class TestLegacyAPI:

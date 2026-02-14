@@ -109,7 +109,7 @@ def test_assertion_engine_basics():
 
     # Build a synthetic result
     exp = Experience(
-        provisional_intention=IntentionSignal.CREATIVE,
+        provisional_intention=IntentionSignal.CREATIVE_INTENT,
         intention_confidence=0.6,
         quality_score=0.75,
     )

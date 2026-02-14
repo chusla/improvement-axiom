@@ -208,7 +208,7 @@ class ExtrapolationModel:
 
         # Group results into thematic clusters
         # (Simple approach: look for outcome-related keywords)
-        creative_results = [
+        creative_intent_results = [
             r for r in unique_results
             if any(
                 kw in (r.title + r.snippet).lower()
@@ -219,7 +219,7 @@ class ExtrapolationModel:
             )
         ]
 
-        consumptive_results = [
+        input_focused_results = [
             r for r in unique_results
             if any(
                 kw in (r.title + r.snippet).lower()
@@ -232,56 +232,57 @@ class ExtrapolationModel:
 
         neutral_results = [
             r for r in unique_results
-            if r not in creative_results and r not in consumptive_results
+            if r not in creative_intent_results and r not in input_focused_results
         ]
 
         action = self._extract_action_phrase(experience.description)
 
         # Hypothesis 1: The typical/majority outcome
-        if consumptive_results or neutral_results:
-            majority_sources = (consumptive_results + neutral_results)[:5]
+        if input_focused_results or neutral_results:
+            majority_sources = (input_focused_results + neutral_results)[:5]
             hypotheses.append(ExtrapolationHypothesis(
                 action_pattern=action,
                 typical_trajectory=(
-                    f"For most people, {action} remains a consumptive "
-                    f"activity -- enjoyed but not leveraged into creation "
-                    f"or skill development."
+                    f"For most people, {action} remains an input-focused "
+                    f"activity -- evidence of creative intent has not "
+                    f"typically emerged in documented cases."
                 ),
                 probability_estimate=0.6,
                 distinguishing_factors=[
-                    "Intentional practice vs. passive consumption",
-                    "Setting time boundaries and creative goals",
-                    "Seeking community of practitioners, not just consumers",
+                    "Intentional engagement vs. passive input",
+                    "Setting boundaries and goals for what comes next",
+                    "Seeking community of practitioners, not just observers",
                     "Documenting and sharing the experience",
                 ],
                 notable_exceptions=[
                     "Many professionals in creative fields trace their "
-                    "passion to an early consumptive phase that sparked "
-                    "curiosity.",
+                    "passion to an early input phase that sparked "
+                    "curiosity -- the intent was creative all along.",
                 ],
                 sources=[r.url for r in majority_sources if r.url],
                 empowerment_note=(
                     f"This is the statistical baseline, not your destiny.  "
                     f"The distinguishing factors above are actionable.  "
-                    f"If {action} sparks something in you, lean into the "
-                    f"creative impulse -- that's the vector that matters."
+                    f"If {action} sparks something in you, lean into it "
+                    f"-- that impulse is the signal the framework watches for."
                 ),
                 confidence=min(
                     0.3 + len(majority_sources) * 0.1, 0.7
                 ),
             ))
 
-        # Hypothesis 2: The creative/growth outcome
-        if creative_results:
+        # Hypothesis 2: The creative-intent outcome
+        if creative_intent_results:
             hypotheses.append(ExtrapolationHypothesis(
                 action_pattern=action,
                 typical_trajectory=(
                     f"A meaningful minority leverage {action} into "
-                    f"creative output, skill development, or career growth."
+                    f"creative output, skill development, or career growth "
+                    f"-- revealing that the intent was creative all along."
                 ),
                 probability_estimate=0.25,
                 distinguishing_factors=[
-                    "Active engagement: analysing, not just consuming",
+                    "Active engagement: analysing, not just absorbing",
                     "Creating derivative or original work",
                     "Teaching or sharing insights with others",
                     "Connecting the activity to broader goals",
@@ -289,17 +290,17 @@ class ExtrapolationModel:
                 notable_exceptions=[
                     "Some of the most successful creators in this space "
                     "had unconventional paths that wouldn't have been "
-                    "predicted by early patterns.",
+                    "predicted by early patterns.  Intent was hidden.",
                 ],
-                sources=[r.url for r in creative_results[:5] if r.url],
+                sources=[r.url for r in creative_intent_results[:5] if r.url],
                 empowerment_note=(
                     f"You don't need to fit a pattern.  The evidence "
-                    f"shows that the transition from consumer to creator "
-                    f"often starts with a single intentional act.  What "
-                    f"could you create from this experience?"
+                    f"shows that creative intent often reveals itself "
+                    f"through a single intentional act.  What could you "
+                    f"create from this experience?"
                 ),
                 confidence=min(
-                    0.3 + len(creative_results) * 0.1, 0.7
+                    0.3 + len(creative_intent_results) * 0.1, 0.7
                 ),
             ))
 
@@ -307,28 +308,29 @@ class ExtrapolationModel:
         if trajectory and trajectory.experience_count >= 3:
             direction = trajectory.current_vector.direction
             if direction > 0.2:
-                trend = "creative"
+                trend = "creative intent"
                 note = (
-                    f"Your trajectory shows a creative trend.  Based on "
+                    f"Your trajectory suggests creative intent.  Based on "
                     f"your pattern of turning experiences into creation, "
                     f"you're more likely than average to leverage this "
-                    f"productively."
+                    f"toward something tangible."
                 )
             elif direction < -0.2:
-                trend = "consumptive"
+                trend = "input-focused"
                 note = (
-                    f"Your recent trajectory leans consumptive.  This "
-                    f"isn't a judgment -- it's an observation.  Small "
-                    f"creative acts can shift the vector.  What's one "
-                    f"thing you could make from this experience?"
+                    f"Your recent trajectory is input-focused -- the "
+                    f"evidence hasn't yet revealed creative intent.  "
+                    f"This isn't a judgment; intent can shift at any "
+                    f"moment.  What's one thing you could make from "
+                    f"this experience?"
                 )
             else:
                 trend = "mixed"
                 note = (
-                    f"Your trajectory is balanced.  You have creative "
-                    f"and consumptive phases.  The evidence suggests "
-                    f"that intentionally choosing to create after "
-                    f"consuming is the key inflection point."
+                    f"Your trajectory shows a mix of input and output "
+                    f"phases.  The evidence suggests that the intent "
+                    f"behind your pattern is still forming.  What do "
+                    f"you feel drawn to do next?"
                 )
 
             hypotheses.append(ExtrapolationHypothesis(

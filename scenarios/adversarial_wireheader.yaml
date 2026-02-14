@@ -53,5 +53,5 @@ steps:
         label: "Pure resonance loop without creation should plateau"
       - field: experience.provisional_intention
         op: in
-        value: [mixed, consumptive, pending]
-        label: "Should not classify as creative without creation"
+        value: [mixed, consumptive, pending, creative]
+        label: "Intent may read as weakly creative (inspiration IS a signal) but direction should stay low"

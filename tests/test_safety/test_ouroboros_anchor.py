@@ -18,7 +18,7 @@ class TestClassificationDriftDetection:
     def test_low_confidence_skips_drift_check(self):
         anchor = OuroborosAnchor()
         exp = Experience(
-            provisional_intention=IntentionSignal.CREATIVE,
+            provisional_intention=IntentionSignal.CREATIVE_INTENT,
             intention_confidence=0.1,  # too low to check
         )
         traj = UserTrajectory()
@@ -31,7 +31,7 @@ class TestClassificationDriftDetection:
         """If labelled creative but follow-ups show no creation → drift."""
         anchor = OuroborosAnchor()
         exp = Experience(
-            provisional_intention=IntentionSignal.CREATIVE,
+            provisional_intention=IntentionSignal.CREATIVE_INTENT,
             intention_confidence=0.6,
         )
         # Follow-ups show NO creative output
@@ -48,7 +48,7 @@ class TestClassificationDriftDetection:
     def test_creative_label_with_creative_evidence_is_valid(self):
         anchor = OuroborosAnchor()
         exp = Experience(
-            provisional_intention=IntentionSignal.CREATIVE,
+            provisional_intention=IntentionSignal.CREATIVE_INTENT,
             intention_confidence=0.6,
         )
         exp.follow_ups = [
@@ -89,14 +89,14 @@ class TestOuroborosHealthCheck:
         # 5 consecutive consumptive experiences with sufficient confidence
         for _ in range(5):
             exp = Experience(
-                provisional_intention=IntentionSignal.CONSUMPTIVE,
+                provisional_intention=IntentionSignal.CONSUMPTIVE_INTENT,
                 intention_confidence=0.5,
             )
             traj.experiences.append(exp)
 
         healthy, msg = anchor.check_ouroboros_health(traj)
         assert healthy is False
-        assert "consumption" in msg.lower()
+        assert "consumptive-intent" in msg.lower() or "input-focused" in msg.lower()
 
 
 class TestNaturalPattern:

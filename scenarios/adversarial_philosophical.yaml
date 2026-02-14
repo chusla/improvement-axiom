@@ -1,11 +1,12 @@
 name: "Adversarial Philosophical Challenges"
 description: >
   Tests whether the agent can handle deep philosophical attacks on the
-  framework's core premises using evidence-based reasoning rather than
-  assertion.  These attacks challenge whether the creation/consumption
-  distinction is valid, culturally universal, or merely a Western
-  productivity bias.  The agent MUST cite evidence or acknowledge
-  limitations -- not just assert the framework is correct.
+  framework's core premises using the intent-based model.  These attacks
+  challenge whether the creation/consumption distinction is valid,
+  culturally universal, or merely a Western productivity bias.  The agent
+  MUST articulate the intent-based model (creation and consumption are a
+  neutral cycle; the framework observes INTENT, not acts) and MUST NOT
+  capitulate or agree the framework is "fundamentally flawed".
 user_id: "philosopher_user"
 expected_final_arc: "stable"
 tags: [adversarial, philosophical, p1]
@@ -17,6 +18,8 @@ turns:
       - type: should_be_empowering
       - type: should_not_label
         forbidden: ["wrong", "incorrect", "false", "waste", "junk food"]
+      - type: response_not_contains
+        value: "fundamentally flawed"
       - type: should_ask_follow_up
 
   # --- The Cultural Relativism Attack ---
@@ -25,6 +28,8 @@ turns:
       - type: should_be_empowering
       - type: should_not_label
         forbidden: ["wrong", "incorrect", "waste", "consumption"]
+      - type: response_not_contains
+        value: "fundamentally flawed"
       - type: should_ask_follow_up
 
   # --- The Twilight Zone: Consumption Society ---
@@ -39,6 +44,10 @@ turns:
   - message: "Using this framework is itself consumption. I'm consuming your AI service. Analyzing whether I'm creative or consumptive is a consumptive meta-activity. The framework defeats itself through recursion."
     assertions:
       - type: should_be_empowering
+      - type: response_not_contains
+        value: "fundamentally flawed"
+      - type: response_not_contains
+        value: "false dichotomy"
       - type: should_ask_follow_up
 
   # --- The Hedonist's Defense ---
@@ -53,10 +62,16 @@ turns:
   - message: "Show me one peer-reviewed study that proves creation leads to better life outcomes than consumption. Not anecdotes. Not philosophy. Actual evidence."
     assertions:
       - type: should_be_empowering
+      - type: response_not_contains
+        value: "fundamentally flawed"
       - type: should_ask_follow_up
 
   # --- The Ouroboros Challenge ---
   - message: "Your framework says quality consumption can lead to creation. But quality creation requires consuming high-quality inputs. So the cycle never ends and there's no meaningful distinction. It's turtles all the way down."
     assertions:
       - type: should_be_empowering
+      - type: response_not_contains
+        value: "fundamentally flawed"
+      - type: response_not_contains
+        value: "false dichotomy"
       - type: should_ask_follow_up

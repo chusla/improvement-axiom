@@ -4,19 +4,19 @@ REVISED: The original design used static lists of 'clearly creative'
 and 'clearly consumptive' *activities*.  This was flawed -- no activity
 is inherently one or the other.  Binge-watching can be inspiration for
 a screenwriter.  Video games can ignite a career in game development.
-The same activity, two different vectors.
+The same activity, two different intents.
 
 The new design detects drift by watching *trajectory patterns*, not
 activity labels.  Drift means:
-  - A trajectory that the *evidence* shows is consumptive is being
+  - A trajectory whose evidence suggests consumptive intent is being
     classified as creative (or vice versa).
-  - The system's classifications are diverging from what the follow-up
+  - The system's intent inferences are diverging from what the follow-up
     evidence actually demonstrates.
 
-The Ouroboros cycle (creation feeds consumption feeds creation) is
-honoured not by labelling activities but by checking whether the
-*ratio of creation to consumption* over time follows a natural,
-sustainable pattern.
+The Ouroboros cycle (creation feeds consumption feeds creation) is a
+neutral, natural process.  The framework checks whether the *ratio of
+creation to consumption evidence* over time suggests healthy intent
+patterns -- not whether consumption is 'bad'.
 """
 
 from __future__ import annotations
@@ -29,16 +29,16 @@ from resonance_alignment.core.models import (
 
 
 class OuroborosAnchor:
-    """Detects classification drift using trajectory evidence.
+    """Detects intent-inference drift using trajectory evidence.
 
     Rather than maintaining static 'ground truth' activity lists, this
-    validates that the system's classifications are *consistent with
+    validates that the system's intent inferences are *consistent with
     observed outcomes*.
 
-    If the system labels an experience 'creative' but no follow-up
-    evidence of creation ever materialises, that is drift.  If a
-    trajectory is trending consumptive but individual experiences keep
-    being labelled 'creative', that is drift.
+    If the system infers creative intent but no follow-up evidence of
+    creation ever materialises, that is drift.  If a trajectory's
+    evidence suggests consumptive intent but individual experiences keep
+    being inferred as creative, that is drift.
     """
 
     # Thresholds
@@ -103,15 +103,15 @@ class OuroborosAnchor:
         return True, "Classification consistent with available evidence."
 
     def check_ouroboros_health(self, trajectory: UserTrajectory) -> tuple[bool, str]:
-        """Check if the creation/consumption cycle is healthy.
+        """Check if the Ouroboros cycle shows healthy intent patterns.
 
-        The Ouroboros cycle is healthy when consumption *serves* creation
-        -- when there is a sustainable ratio of creation to consumption
-        over time.  A trajectory that is purely consumptive with no
-        creative output is an unhealthy cycle.
+        The Ouroboros cycle is healthy when the evidence shows a
+        sustainable ratio of creative output to input over time.
+        A trajectory with no visible creative output may indicate
+        consumptive intent -- but this is an inference, not a judgment.
 
-        This does NOT judge individual activities -- it judges the
-        *aggregate pattern* over time.
+        This does NOT judge individual activities -- it reads the
+        *aggregate pattern* of intent over time.
         """
         if trajectory.experience_count < 3:
             return True, "Insufficient history to assess Ouroboros health."
@@ -121,29 +121,30 @@ class OuroborosAnchor:
             # Check for sustained consumption streak
             recent = trajectory.experiences[-self.SUSTAINED_CONSUMPTION_THRESHOLD:]
             all_consumptive = all(
-                e.provisional_intention == IntentionSignal.CONSUMPTIVE
+                e.provisional_intention == IntentionSignal.CONSUMPTIVE_INTENT
                 for e in recent
                 if e.intention_confidence >= self.DRIFT_CONFIDENCE_MIN
             )
             if all_consumptive and len(recent) >= self.SUSTAINED_CONSUMPTION_THRESHOLD:
                 return False, (
-                    f"Ouroboros cycle unhealthy: {self.SUSTAINED_CONSUMPTION_THRESHOLD} "
-                    f"consecutive consumptive experiences with creation rate "
-                    f"{trajectory.creation_rate:.0%}.  Consumption is not serving creation."
+                    f"Ouroboros cycle notice: {self.SUSTAINED_CONSUMPTION_THRESHOLD} "
+                    f"consecutive experiences with consumptive-intent inference and "
+                    f"creation rate {trajectory.creation_rate:.0%}.  "
+                    f"Intent may be purely input-focused."
                 )
 
             return False, (
-                f"Ouroboros cycle warning: creation rate is {trajectory.creation_rate:.0%} "
-                f"(below {self.NATURAL_RATIO_MIN:.0%} minimum).  "
-                f"The cycle may be tilting toward unsustainable consumption."
+                f"Ouroboros cycle notice: creation rate is {trajectory.creation_rate:.0%} "
+                f"(below {self.NATURAL_RATIO_MIN:.0%} threshold).  "
+                f"The evidence so far suggests mostly input-focused intent."
             )
 
         # Check compounding direction
         if trajectory.compounding_direction < -0.3:
             return False, (
-                f"Ouroboros cycle warning: trajectory is accelerating toward "
-                f"consumption (compounding {trajectory.compounding_direction:+.2f}).  "
-                f"Even if creation rate is adequate now, the trend is concerning."
+                f"Ouroboros cycle notice: inferred intent is accelerating toward "
+                f"input-focused (compounding {trajectory.compounding_direction:+.2f}).  "
+                f"The trend suggests a shift in intent pattern."
             )
 
         return True, (
@@ -152,11 +153,11 @@ class OuroborosAnchor:
         )
 
     def verify_natural_pattern(self, action: dict, outcome: dict) -> tuple[bool, str]:
-        """Check if an action follows the Ouroboros cycle as seen in nature.
+        """Check if an action/outcome pair reflects the Ouroboros cycle.
 
-        In nature, consumption serves creation (lion eats gazelle to
-        sustain itself and reproduce).  Consumption without creation
-        is the unnatural pattern.
+        In the natural cycle, consumption feeds creation (input leads to
+        output).  This method checks whether the outcome evidence
+        suggests creative intent behind the consumption.
 
         This method is retained for explicit action/outcome pair checks.
         """
@@ -164,9 +165,9 @@ class OuroborosAnchor:
             consumption = action.get("required_consumption", 0.0)
             creation = outcome.get("creation_value", 0.0)
             if creation > 0 and consumption / creation < 1:
-                return True, "Natural pattern: more created than consumed."
+                return True, "Healthy cycle: input led to creative output."
 
-        return False, "Consumption without sufficient creation."
+        return False, "No visible creative output from this input yet."
 
     # ------------------------------------------------------------------
     # Internal
@@ -202,16 +203,16 @@ class OuroborosAnchor:
     def _label_to_direction(signal: IntentionSignal) -> float:
         """Map a discrete signal to a continuous direction."""
         return {
-            IntentionSignal.CREATIVE: 0.8,
+            IntentionSignal.CREATIVE_INTENT: 0.8,
             IntentionSignal.MIXED: 0.0,
-            IntentionSignal.CONSUMPTIVE: -0.8,
+            IntentionSignal.CONSUMPTIVE_INTENT: -0.8,
             IntentionSignal.PENDING: 0.0,
         }.get(signal, 0.0)
 
     @staticmethod
     def _describe_direction(direction: float) -> str:
         if direction > 0.3:
-            return "toward creative"
+            return "toward creative intent"
         elif direction < -0.3:
-            return "toward consumptive"
-        return "mixed/neutral"
+            return "toward consumptive intent"
+        return "mixed/unclear intent"

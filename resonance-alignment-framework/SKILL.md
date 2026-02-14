@@ -27,27 +27,32 @@ description: Resonance-based AI alignment framework using quality-intention matr
 - AI can learn and predict what creates resonance for individuals
 
 **3. Ouroboros Cycle (Creation/Consumption)**
-- Nature operates through dualistic cycle: creation and consumption
-- Not "good vs evil" but "creative vs consumptive"
-- Natural consumption serves creation (lion eating gazelle for offspring)
-- Human uniqueness: consumption for its own sake (unnatural pattern)
-- Goal: Align toward creative intention, away from pure consumption
+- Nature operates through an endless cycle: creation feeds consumption feeds creation
+- Neither is inherently good or bad -- they are like inhaling and exhaling
+- The framework observes **intent**, which is hidden at t=0 and reveals itself over time
+- A consumptive act can have creative intent (Scorsese watching 1000 films)
+- A creative act can have consumptive intent (creating spam/fraud to extract money)
+- Over the long arc, the intent reveals itself through the pattern of evidence
 
-**4. Quality-Intention Matrix (2×2)**
+**4. Quality-Intent Matrix (2×2)**
 
 ```
            High Quality
                 |
-    Hedonism    |    Optimal
-    (WALL-E)    |    (Target)
+  High Quality  |    Optimal
+  Input (Intent |    (Target)
+  Unclear)      |
                 |
 Consumptive ----+---- Creative
+   Intent       |      Intent
                 |
-    "Junk"      |    "Slop"
-    Food        |    (Low Quality
-                |     Creative)
+  Low Engage-   |  Early Creation
+  ment (Intent  |  (Quality
+  Unclear)      |   Developing)
            Low Quality
 ```
+
+**Key:** Quality and intent are independent axes -- they do not predict each other.
 
 **Target Quadrant**: Upper Right (High Quality + Creative Intent)
 

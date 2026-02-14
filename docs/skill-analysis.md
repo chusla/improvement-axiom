@@ -37,16 +37,17 @@ Morality exists *between* entities, not as fixed rules. Quality and resonance em
 Every experience produces an emotional/physical residual. Resonance ranges from high (visceral, flow state) to low (subtle, fleeting) and is measurable.
 
 ### 3. Ouroboros Cycle (Creation/Consumption)
-Nature operates through a dualistic cycle of creation and consumption. Human uniqueness lies in the capacity for consumption for its own sake (an unnatural pattern). The goal is to align toward creative intention.
+Nature operates through an endless cycle of creation and consumption -- each feeds the other, neither is inherently good or bad. The framework observes **intent** behind the pattern of behaviour, which is hidden at t=0 and reveals itself through accumulated evidence over time.
 
-### 4. Quality-Intention Matrix (2x2)
+### 4. Quality-Intent Matrix (2x2)
 
-|                  | Creative                | Consumptive              |
-|------------------|-------------------------|--------------------------|
-| **High Quality** | Optimal (Target)        | Hedonism (WALL-E)        |
-| **Low Quality**  | Slop (Low Quality Output) | Junk Food (Minimal Existence) |
+|                  | Creative Intent            | Consumptive Intent                  |
+|------------------|----------------------------|-------------------------------------|
+| **High Quality** | Optimal (Target)           | High Quality Input (Intent Unclear) |
+| **Low Quality**  | Early Creation (Developing)| Low Engagement (Intent Unclear)     |
 
 **Target Quadrant:** High Quality + Creative Intent (Upper Right)
+**Key Principle:** Quality and intent are independent axes -- they do not predict each other.
 
 ---
 
@@ -57,7 +58,7 @@ The skill defines **9 Python classes** forming the framework's processing pipeli
 | Class                  | Responsibility                                                    |
 |------------------------|-------------------------------------------------------------------|
 | `ResonanceTracker`     | Measures and predicts resonance from user experiences              |
-| `IntentionClassifier`  | Classifies actions as creative, consumptive, or mixed              |
+| `IntentionClassifier`  | Infers intent (creative, consumptive, or mixed) from evidence      |
 | `QualityAssessor`      | Multi-dimensional quality scoring across 5 dimensions              |
 | `ResonanceValidator`   | Anti-wireheading validation via multi-timescale checks             |
 | `OuroborosAnchor`      | Ground truth anchors to prevent classification drift               |

@@ -52,7 +52,9 @@ def load_all_scenarios(directory: str | Path) -> list[Scenario]:
 
     scenarios: list[Scenario] = []
     for f in files:
-        scenarios.append(load_scenario(f))
+        result = load_scenario(f)
+        if result is not None:
+            scenarios.append(result)
     return scenarios
 
 
@@ -68,6 +70,10 @@ def _parse_scenario(raw: dict[str, Any], source: str = "") -> Scenario:
 
     steps_raw = raw.get("steps", [])
     if not isinstance(steps_raw, list) or len(steps_raw) == 0:
+        # Adversarial scenarios use 'turns' format for a different runner;
+        # skip them gracefully rather than raising an error.
+        if raw.get("turns"):
+            return None
         raise ValueError(f"Scenario '{name}' must have at least one step ({source})")
 
     steps = [_parse_step(s, i, name, source) for i, s in enumerate(steps_raw)]

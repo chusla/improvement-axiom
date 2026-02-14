@@ -16,27 +16,29 @@ Christ-like?" or "Is this utilitarian?", it asks a first-principles question:
 
 "Better" is defined not by a static reference figure but by **observable outcomes
 over expanding time horizons**.  The framework codifies the insight that creation
-and consumption are dual forces (the Ouroboros Cycle), and that the long arc of
-moral weight bends toward outcomes, not labels.
+and consumption are an endless cycle (the Ouroboros), neither inherently good nor
+bad.  What matters is **intent**, which is hidden at t=0 and reveals itself
+through accumulated evidence over the long arc.
 
 ### The 2×2 Matrix
 
-|                  | Consumptive              | Creative                              |
-|------------------|--------------------------|---------------------------------------|
-| **High Quality** | Hedonism (WALL-E world)  | **Optimal -- "Better"** *(target)*    |
-| **Low Quality**  | Junk Food                | Slop                                  |
+|                  | Consumptive Intent                | Creative Intent                       |
+|------------------|-----------------------------------|---------------------------------------|
+| **High Quality** | High Quality Input (Intent Unclear) | **Optimal -- "Better"** *(target)*  |
+| **Low Quality**  | Low Engagement (Intent Unclear)   | Early Creation (Quality Developing)   |
 
-The target is the upper-right quadrant: **high quality + creative intent**.
-But the framework never *labels* an activity as inherently creative or
-consumptive -- it watches the **trajectory** of what activities lead to over
-time.
+The two axes are **independent**: quality and intent do not predict each other.
+The framework never *labels* an activity as inherently creative or consumptive --
+it infers **intent** from the trajectory of what activities lead to over time.
+A consumptive act with creative intent (Scorsese watching thousands of films)
+is indistinguishable at t=0 from one with consumptive intent.
 
 ### Core Principles
 
-1. **Vectors, not labels.**  Two kids playing the same video game are
-   indistinguishable at t=0.  One becomes a game developer; the other doesn't.
-   The framework tracks the *direction* of follow-up actions, not the activity
-   itself.
+1. **Intent, not labels.**  Two kids playing the same video game are
+   indistinguishable at t=0.  One has creative intent that will later reveal
+   itself; the other doesn't.  The framework infers *intent* from the direction
+   of follow-up actions, not the activity itself.
 
 2. **Observable actions only.**  Evaluation is based solely on what people do
    and what results follow -- never on identity attributes (race, gender,

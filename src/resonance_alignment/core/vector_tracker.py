@@ -4,11 +4,12 @@ The central insight: no activity is inherently creative or consumptive.
 Two kids can play the same video game for the same duration -- one is
 purely consuming, the other is fascinated and later starts building
 games.  At t=0 these are indistinguishable.  The difference is the
-*vector* -- the direction revealed over time.
+*intent* -- revealed over time through accumulated evidence.
 
 VectorTracker records experiences, accepts follow-up observations, and
-computes a trajectory that evolves as evidence accumulates.  It never
-labels an activity; it tracks what activities *lead to*.
+computes a trajectory that infers intent as evidence accumulates.  It
+never labels an activity; it reads the intent behind what activities
+*lead to* over the long arc.
 """
 
 from __future__ import annotations
@@ -29,14 +30,17 @@ from resonance_alignment.core.models import (
 
 
 class VectorTracker:
-    """Tracks the creative / consumptive trajectory of individuals.
+    """Infers intent from accumulated evidence over time.
 
     Instead of labeling activities, it watches what activities *lead to*
-    over time.  The vector has direction (creative ↔ consumptive),
-    magnitude (signal strength), and confidence (how much evidence
-    supports the reading).
+    and infers the intent behind them.  The vector has direction
+    (creative intent ↔ consumptive intent), magnitude (signal strength),
+    and confidence (how much evidence supports the inference).
 
     Confidence starts near zero at t=0 and grows with follow-up evidence.
+    Intent is hidden at t=0 -- the same act (watching films) can have
+    creative intent (Scorsese) or consumptive intent.  Only the long
+    arc of evidence distinguishes them.
 
     Optionally backed by a StorageBackend for persistence across
     sessions.  Without a backend, trajectories live in memory only
@@ -50,7 +54,7 @@ class VectorTracker:
     _CREATION_WEIGHT = 0.40
     _SHARING_WEIGHT = 0.25
     _INSPIRATION_WEIGHT = 0.20
-    _RATING_WEIGHT = 0.15  # user's own resonance rating (weakest signal)
+    _RATING_WEIGHT = 0.10  # user's self-report (weakest, most gameable signal)
 
     # Recency weighting: experiences older than this contribute less.
     _RECENCY_HALFLIFE_DAYS = 90.0
@@ -149,10 +153,10 @@ class VectorTracker:
         return self._aggregate_vector(trajectory)
 
     def compute_compounding_rate(self, user_id: str) -> float:
-        """Second derivative: is the vector *accelerating*?
+        """Second derivative: is the inferred intent *accelerating*?
 
-        Positive → trending more creative over time.
-        Negative → trending more consumptive over time.
+        Positive → trending toward creative intent over time.
+        Negative → trending toward consumptive intent over time.
         Zero → stable.
         """
         trajectory = self.trajectories.get(user_id)
@@ -221,7 +225,7 @@ class VectorTracker:
                 return experience.vector_snapshots[-1]
             return VectorSnapshot(confidence=0.05)
 
-        # Compute creative signal from follow-up evidence
+        # Compute creative-intent signal from follow-up evidence
         creation_signals: list[float] = []
         for fu in experience.follow_ups:
             signal = 0.0
@@ -239,9 +243,13 @@ class VectorTracker:
         # Average creation signal across follow-ups (0 = no creative evidence)
         avg_creation = sum(creation_signals) / len(creation_signals) if creation_signals else 0.0
 
-        # Direction: scale from -1..+1.  Pure creation → +1, no signals → slight negative
-        # (absence of creative output after an experience leans consumptive)
-        direction = (avg_creation * 2.0) - 0.3  # slight negative bias when no creation
+        # Direction: scale from -1..+1.
+        # Mild bias: absence of creative evidence leans slightly toward
+        # consumptive-intent inference, but much less aggressively than
+        # before.  The framework does not equate "no visible creation" with
+        # "consumptive intent" -- it means intent is unclear.
+        # Key: inspiration-only (claimed but unacted) stays in MIXED zone.
+        direction = (avg_creation * 2.0) - 0.2  # mild bias when no creation evidence
         direction = max(-1.0, min(1.0, direction))
 
         # Include user rating as a weak signal toward positive direction
@@ -325,11 +333,11 @@ class VectorTracker:
 
     @staticmethod
     def _direction_to_signal(direction: float) -> IntentionSignal:
-        """Map continuous direction to a discrete signal."""
+        """Map continuous direction to a discrete intent inference."""
         if direction > 0.2:
-            return IntentionSignal.CREATIVE
+            return IntentionSignal.CREATIVE_INTENT
         elif direction < -0.2:
-            return IntentionSignal.CONSUMPTIVE
+            return IntentionSignal.CONSUMPTIVE_INTENT
         else:
             return IntentionSignal.MIXED
 

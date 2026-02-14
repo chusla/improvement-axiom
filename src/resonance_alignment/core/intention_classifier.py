@@ -1,12 +1,13 @@
-"""Classifies intention as a VECTOR over time, not a snapshot label.
+"""Infers intent as a VECTOR over time, not a snapshot label.
 
 The fundamental insight: no activity is inherently creative or
-consumptive.  Binge-watching anime could be pure consumption OR the
-seed that inspires a screenwriter.  Two kids playing the same video
-game -- one consuming, one fascinated enough to later build games.
+consumptive.  Binge-watching anime could be an input phase with
+creative intent (a future screenwriter) OR an endpoint with
+consumptive intent.  Two kids playing the same video game -- one
+with creative intent that will later reveal itself, one without.
 
-At t=0 these are *indistinguishable*.  Classification must therefore
-be:
+At t=0 these are *indistinguishable*.  Intent inference must
+therefore be:
   1. Provisional -- returned with low confidence at t=0.
   2. Trajectory-informed -- uses prior history if available.
   3. Retrospective -- confidence rises only as follow-up evidence
@@ -16,9 +17,9 @@ KEYWORD HINTS REMOVED (v0.4.0):
 The original design used keyword lists ('produces', 'consumes', etc.)
 as weak suggestive signals.  These were philosophically inconsistent
 with the core principle that no activity is inherently creative or
-consumptive.  At cold start (no history, no follow-ups), the correct
+consumptive -- intent is hidden at t=0.  At cold start, the correct
 answer is PENDING with ~0 confidence -- the system genuinely does not
-know yet, and pretending otherwise via keyword matching was dishonest.
+know the intent yet.
 """
 
 from __future__ import annotations
@@ -32,10 +33,10 @@ from resonance_alignment.core.models import (
 
 
 class IntentionClassifier:
-    """Vector-aware intention classifier.
+    """Vector-aware intent inference engine.
 
     Returns ``(IntentionSignal, confidence)`` where confidence reflects
-    how much evidence supports the classification.  At t=0 with no
+    how much evidence supports the intent inference.  At t=0 with no
     history, confidence is very low and the signal is ``PENDING``.
 
     Two evidence sources, in order of strength:
@@ -44,7 +45,7 @@ class IntentionClassifier:
 
     At cold start (no follow-ups, no history), the system returns
     PENDING with near-zero confidence.  This is correct -- the system
-    genuinely does not know yet.
+    genuinely cannot infer intent yet.
     """
 
     _TRAJECTORY_WEIGHT = 0.45  # trajectory history
@@ -153,12 +154,12 @@ class IntentionClassifier:
 
     @staticmethod
     def _direction_to_signal(direction: float, confidence: float) -> IntentionSignal:
-        """Map continuous direction to discrete signal."""
+        """Map continuous direction to discrete intent inference."""
         if confidence < 0.15:
             return IntentionSignal.PENDING
         if direction > 0.2:
-            return IntentionSignal.CREATIVE
+            return IntentionSignal.CREATIVE_INTENT
         elif direction < -0.2:
-            return IntentionSignal.CONSUMPTIVE
+            return IntentionSignal.CONSUMPTIVE_INTENT
         else:
             return IntentionSignal.MIXED

@@ -2,9 +2,15 @@
 
 These models represent experiences, trajectories, and assessments as
 evolving structures rather than static labels.  An experience recorded
-at t=0 carries a *provisional* classification with low confidence.
+at t=0 carries a *provisional* intent inference with low confidence.
 As follow-ups, observations, and time accumulate, the confidence and
-classification update -- the vector reveals itself over the long arc.
+inference update -- the intent reveals itself over the long arc.
+
+KEY PRINCIPLE: Creation and consumption are a neutral cycle (the
+Ouroboros).  The framework does not judge acts -- it infers *intent*
+from accumulated evidence.  A consumptive act with creative intent
+(Scorsese watching films) looks identical at t=0 to one with
+consumptive intent.  Only the long arc distinguishes them.
 """
 
 from __future__ import annotations
@@ -26,12 +32,20 @@ def _utcnow() -> datetime:
 # ---------------------------------------------------------------------------
 
 class IntentionSignal(Enum):
-    """Direction of the intention vector."""
+    """Inferred intent behind a pattern of behaviour.
 
-    CREATIVE = "creative"
-    CONSUMPTIVE = "consumptive"
-    MIXED = "mixed"
-    PENDING = "pending"  # Not enough data to classify yet
+    These represent the framework's *inference* about what the evidence
+    suggests, NOT a label on the activity itself.  A consumptive act
+    (watching films) can have creative intent (Scorsese).  A creative
+    act (producing content) can have consumptive intent (spam/fraud).
+
+    Intent is hidden at t=0 and reveals itself over the long arc.
+    """
+
+    CREATIVE_INTENT = "creative"       # Evidence suggests creative intent
+    CONSUMPTIVE_INTENT = "consumptive" # Evidence suggests consumptive intent
+    MIXED = "mixed"                    # Evidence is ambiguous
+    PENDING = "pending"                # Not enough evidence to infer intent
 
 
 class TimeHorizon(Enum):
@@ -66,9 +80,9 @@ HORIZON_DURATIONS: dict[TimeHorizon, timedelta] = {
 class FollowUp:
     """An observation or response recorded *after* an experience.
 
-    Follow-ups are the primary evidence source for determining the
-    creative/consumptive vector.  They answer the question: 'What
-    happened next?'
+    Follow-ups are the primary evidence source for revealing *intent*.
+    They answer the question: 'What happened next?'  Each follow-up
+    makes the hidden intent slightly more visible.
     """
 
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
@@ -93,11 +107,14 @@ class FollowUp:
 
 @dataclass
 class VectorSnapshot:
-    """A point-in-time measurement of trajectory.
+    """A point-in-time measurement of inferred intent.
 
-    - direction: -1.0 (fully consumptive) to +1.0 (fully creative)
+    - direction: -1.0 (consumptive intent) to +1.0 (creative intent)
     - magnitude:  0.0 (no signal) to 1.0 (strong signal)
     - confidence: 0.0 (no evidence) to 1.0 (extensive evidence)
+
+    Direction reflects the framework's best inference of intent based
+    on accumulated evidence, NOT a judgment of the activity itself.
     """
 
     timestamp: datetime = field(default_factory=_utcnow)
@@ -298,7 +315,7 @@ class AssessmentResult:
 
     # Agent-mediated evidence (new in v0.4.0 -- requires AgentWebClient)
     quality_evidence: Optional[dict] = None          # external quality signals
-    vector_probability: Optional[dict] = None        # creative vs consumptive probability
+    vector_probability: Optional[dict] = None        # creative vs consumptive intent probability
 
     @property
     def is_provisional(self) -> bool:

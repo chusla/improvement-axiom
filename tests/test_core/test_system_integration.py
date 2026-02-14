@@ -79,7 +79,7 @@ class TestFollowUpRevealsVector:
         assert result2.experience.intention_confidence > initial_confidence
         # Should lean creative now
         assert result2.experience.provisional_intention in (
-            IntentionSignal.CREATIVE, IntentionSignal.MIXED
+            IntentionSignal.CREATIVE_INTENT, IntentionSignal.MIXED
         )
         # Propagation should be recorded
         assert result2.experience.propagated is True
@@ -107,7 +107,7 @@ class TestFollowUpRevealsVector:
 
         assert result2 is not None
         assert result2.experience.provisional_intention in (
-            IntentionSignal.CONSUMPTIVE, IntentionSignal.MIXED
+            IntentionSignal.CONSUMPTIVE_INTENT, IntentionSignal.MIXED
         )
 
 

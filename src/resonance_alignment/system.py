@@ -4,25 +4,24 @@ Three entry points:
 
 1. ``process_experience()`` -- Record and provisionally assess a new
    experience.  At t=0, confidence is LOW.  The system returns its
-   best guess along with *questions to ask later* so the vector can
+   best guess along with *questions to ask later* so intent can
    reveal itself over time.
 
 2. ``process_follow_up()`` -- Record what happened *after* an experience.
-   This is how confidence rises and classification evolves.  Each
+   This is how confidence rises and intent inference evolves.  Each
    follow-up shifts the vector based on evidence: did the experience
-   lead to creation, sharing, teaching?  Or did it terminate in
-   consumption?
+   lead to creation, sharing, teaching?  Or did nothing visible emerge?
 
 3. ``submit_artifact()`` -- User presents an externally-hosted artifact
    (URL) as evidence of creation.  The system fetches and verifies it
    via the internet (Defence Layer 2).
 
-The key principle: the system never labels an activity as inherently
-creative or consumptive.  It watches the *trajectory* -- what
-activities lead to over time.  Two kids playing the same game are
-indistinguishable at t=0; the vector diverges over weeks, months,
-years.  Initial degrees may be slight, but over the long arc these
-differences compound tremendously.
+The key principle: creation and consumption are a neutral cycle (the
+Ouroboros).  The system never labels an activity as inherently
+creative or consumptive.  It infers *intent* from what activities
+lead to over time.  Two kids playing the same game are
+indistinguishable at t=0; the inferred intent diverges over weeks,
+months, years as evidence accumulates.
 
 INTERNET ACCESS:
 The system optionally accepts a WebClient for internet-dependent
@@ -61,13 +60,13 @@ from resonance_alignment.explainability.explainable_resonance import Explainable
 
 QUADRANTS = {
     ("High", "Creative"): "Optimal (Target)",
-    ("High", "Consumptive"): "Hedonism (WALL-E)",
-    ("Low", "Creative"): "Slop (Low Quality Output)",
-    ("Low", "Consumptive"): "Junk Food (Minimal Existence)",
+    ("High", "Consumptive"): "High Quality Input (Intent Unclear)",
+    ("Low", "Creative"): "Early Creation (Quality Developing)",
+    ("Low", "Consumptive"): "Low Engagement (Intent Unclear)",
     ("High", "Mixed"): "Transitional (High Quality)",
     ("Low", "Mixed"): "Transitional (Low Quality)",
-    ("High", "Pending"): "Pending (High Quality, Vector Unknown)",
-    ("Low", "Pending"): "Pending (Low Quality, Vector Unknown)",
+    ("High", "Pending"): "Pending (High Quality, Intent Unknown)",
+    ("Low", "Pending"): "Pending (Low Quality, Intent Unknown)",
 }
 
 
@@ -76,7 +75,7 @@ class ResonanceAlignmentSystem:
 
     Processes experiences through a vector-based pipeline that:
     - Withholds judgment at t=0 (returns provisional + questions)
-    - Accepts follow-up evidence that reveals the true vector
+    - Accepts follow-up evidence that reveals intent over time
     - Evaluates across expanding time horizons (the 'long arc')
     - Checks whether resonance propagates into creation
     - Detects trajectory drift and unhealthy Ouroboros cycles
@@ -462,8 +461,8 @@ class ResonanceAlignmentSystem:
     def _calculate_matrix_position(quality: float, signal: IntentionSignal) -> str:
         quality_level = "High" if quality > 0.5 else "Low"
         intention_level = {
-            IntentionSignal.CREATIVE: "Creative",
-            IntentionSignal.CONSUMPTIVE: "Consumptive",
+            IntentionSignal.CREATIVE_INTENT: "Creative",
+            IntentionSignal.CONSUMPTIVE_INTENT: "Consumptive",
             IntentionSignal.MIXED: "Mixed",
             IntentionSignal.PENDING: "Pending",
         }.get(signal, "Pending")
@@ -488,7 +487,7 @@ class ResonanceAlignmentSystem:
         # is to wait for evidence.
         if experience.provisional_intention == IntentionSignal.PENDING:
             recs.append(
-                "Your intention vector is still forming.  "
+                "Intent hasn't revealed itself yet -- this is normal.  "
                 "Check back after some time to see what this experience leads to."
             )
             return recs
@@ -501,20 +500,24 @@ class ResonanceAlignmentSystem:
 
         # Position-based recommendations
         if "Optimal" in pos:
-            recs.append("This experience aligns with high quality creative intent.  Keep going.")
+            recs.append("The evidence suggests creative intent backed by high quality.  Keep going.")
             if trajectory.propagation_rate > 0.5:
                 recs.append("Your pattern of creating after resonance is strong.  Share your process.")
-        elif "Hedonism" in pos:
-            recs.append("High quality, but the vector leans consumptive.  Could you add a creative element?")
-            recs.append("Set a time boundary and use the experience as fuel for something you make.")
-        elif "Slop" in pos:
-            recs.append("Creative intent is there, but quality could be higher.  Seek feedback.")
-            recs.append("Study the masters in this area.  Iteration with intent raises the bar.")
-        elif "Junk Food" in pos:
-            recs.append("This experience leans consumptive and low quality.")
-            recs.append("Try channelling even a small part of this into something you create.")
+        elif "High Quality Input" in pos:
+            recs.append(
+                "High quality engagement, but intent hasn't fully revealed itself yet.  "
+                "What were you hoping this would lead to?"
+            )
+        elif "Early Creation" in pos:
+            recs.append("Creative intent is emerging, but quality could develop further.  Seek feedback.")
+            recs.append("Study the masters in this area.  Iteration with care raises the bar.")
+        elif "Low Engagement" in pos:
+            recs.append(
+                "The evidence so far shows mostly input with unclear intent.  "
+                "What's your intent for this -- is it leading somewhere?"
+            )
         elif "Transitional" in pos:
-            recs.append("Lean into the creative elements of this experience.")
+            recs.append("The evidence is mixed.  What do you feel drawn to do next?")
 
         # Drift warning
         if not drift_valid:
@@ -526,9 +529,9 @@ class ResonanceAlignmentSystem:
         # Ouroboros health warning
         if not cycle_healthy:
             recs.append(
-                "[Cycle health] Your recent pattern leans heavily toward "
-                "consumption.  Consider introducing small creative acts -- "
-                "even mundane tasks done with care and intent count."
+                "[Cycle health] Your recent pattern shows mostly input "
+                "without visible creative output yet.  What's your intent "
+                "for this phase?  Even small acts done with care count."
             )
 
         return recs
