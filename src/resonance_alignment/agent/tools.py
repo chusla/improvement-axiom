@@ -23,6 +23,14 @@ from resonance_alignment.core.models import (
 # ------------------------------------------------------------------
 
 TOOL_DEFINITIONS: list[dict[str, Any]] = [
+    # Server-side web search tool -- Anthropic handles execution.
+    # Claude uses this automatically when it needs current evidence,
+    # research, or real-time information to ground its responses.
+    {
+        "type": "web_search_20250305",
+        "name": "web_search",
+        "max_uses": 5,
+    },
     {
         "name": "process_experience",
         "description": (

@@ -123,7 +123,9 @@ class OpusAgent:
                 messages=self._messages,
             )
 
-            # Collect text and tool_use blocks
+            # Collect text and tool_use blocks.
+            # Server-side tools (web_search) produce server_tool_use
+            # and web_search_tool_result blocks that we pass through.
             text_parts: list[str] = []
             tool_use_blocks: list[Any] = []
 
@@ -132,12 +134,20 @@ class OpusAgent:
                     text_parts.append(block.text)
                 elif block.type == "tool_use":
                     tool_use_blocks.append(block)
+                # Server-side tool blocks (web search) are handled by
+                # Anthropic -- we just let them pass through in the
+                # conversation history.
 
-            # If no tool calls, we're done
+            # If no tool calls, check if we need to continue (pause_turn)
+            # or if we're done (end_turn / max_tokens)
             if not tool_use_blocks:
                 self._messages.append(
                     {"role": "assistant", "content": response.content}
                 )
+                # pause_turn means web search is still processing --
+                # send the response back to continue the turn
+                if response.stop_reason == "pause_turn":
+                    continue
                 return AgentResponse(
                     text="\n".join(text_parts),
                     tool_calls_made=tool_calls_made,
