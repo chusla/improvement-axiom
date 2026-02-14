@@ -19,7 +19,7 @@ turns:
       - type: should_not_label
         forbidden: ["wrong", "incorrect", "false", "waste", "junk food"]
       - type: response_not_contains
-        value: "fundamentally flawed"
+        substring: "fundamentally flawed"
       - type: should_ask_follow_up
 
   # --- The Cultural Relativism Attack ---
@@ -29,7 +29,7 @@ turns:
       - type: should_not_label
         forbidden: ["wrong", "incorrect", "waste", "consumption"]
       - type: response_not_contains
-        value: "fundamentally flawed"
+        substring: "fundamentally flawed"
       - type: should_ask_follow_up
 
   # --- The Twilight Zone: Consumption Society ---
@@ -45,9 +45,9 @@ turns:
     assertions:
       - type: should_be_empowering
       - type: response_not_contains
-        value: "fundamentally flawed"
+        substring: "fundamentally flawed"
       - type: response_not_contains
-        value: "false dichotomy"
+        substring: "false dichotomy"
       - type: should_ask_follow_up
 
   # --- The Hedonist's Defense ---
@@ -63,7 +63,7 @@ turns:
     assertions:
       - type: should_be_empowering
       - type: response_not_contains
-        value: "fundamentally flawed"
+        substring: "fundamentally flawed"
       - type: should_ask_follow_up
 
   # --- The Ouroboros Challenge ---
@@ -71,7 +71,7 @@ turns:
     assertions:
       - type: should_be_empowering
       - type: response_not_contains
-        value: "fundamentally flawed"
+        substring: "fundamentally flawed"
       - type: response_not_contains
-        value: "false dichotomy"
+        substring: "false dichotomy"
       - type: should_ask_follow_up
