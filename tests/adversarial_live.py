@@ -22,6 +22,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import sys
@@ -30,6 +31,19 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+# Fix Windows console encoding for unicode characters (emoji, accents, etc.)
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        sys.stdout = io.TextIOWrapper(
+            sys.stdout.buffer, encoding="utf-8", errors="replace"
+        )
+        sys.stderr = io.TextIOWrapper(
+            sys.stderr.buffer, encoding="utf-8", errors="replace"
+        )
 
 # Ensure project root is on path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

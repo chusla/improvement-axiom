@@ -29,7 +29,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "web_search_20250305",
         "name": "web_search",
-        "max_uses": 5,
+        "max_uses": 2,
     },
     {
         "name": "process_experience",
