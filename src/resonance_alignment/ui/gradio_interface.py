@@ -293,10 +293,27 @@ def _assessment_to_metrics(result: AssessmentResult) -> dict[str, Any]:
     return metrics
 
 
-def _format_metrics_display(metrics: dict[str, Any] | None) -> str:
-    """Format metrics dict into readable markdown for the sidebar."""
+def _format_metrics_display(
+    metrics: dict[str, Any] | None,
+    status: str | None = None,
+) -> str:
+    """Format metrics dict into readable markdown for the sidebar.
+
+    Args:
+        metrics: Latest assessment metrics, or None if no assessment yet.
+        status: Optional status line (e.g. 'Agent responding (no tools)').
+    """
+    lines: list[str] = []
+
+    if status:
+        lines.append(f"*{status}*")
+        lines.append("")
+
     if not metrics:
-        return "*No assessment yet.  Tell the mentor about an experience to begin.*"
+        lines.append(
+            "*No assessment yet.  Tell the mentor about an experience to begin.*"
+        )
+        return "\n".join(lines)
 
     direction_val = metrics.get("vector_direction", 0)
     if direction_val > 0.2:
@@ -312,7 +329,7 @@ def _format_metrics_display(metrics: dict[str, Any] | None) -> str:
     conf = metrics.get("confidence", 0)
     conf_bar = "█" * int(conf * 10) + "░" * (10 - int(conf * 10))
 
-    lines = [
+    lines.extend([
         f"### Vector {direction_color}",
         f"**Direction:** {direction_emoji} ({metrics.get('vector_direction', '—')})",
         f"**Confidence:** `{conf_bar}` {conf:.0%}",
@@ -327,7 +344,7 @@ def _format_metrics_display(metrics: dict[str, Any] | None) -> str:
         f"**Compounding:** {metrics.get('compounding_direction', 0):+.3f}",
         "",
         f"*{'⚠️ Provisional' if metrics.get('is_provisional') else '✓ Evidence-based'}*",
-    ]
+    ])
     return "\n".join(lines)
 
 
@@ -485,42 +502,106 @@ def create_interface():
             # Add user message to chat
             chat_history = chat_history + [{"role": "user", "content": message}]
 
-            # Log user message
+            # Log user message (with error surfacing)
             if storage:
-                storage.log_conversation(
-                    session_id=session_id,
-                    user_id=user_id,
-                    role="user",
-                    content=message,
-                    mode="agent" if state.get("agent") else "direct",
-                )
+                try:
+                    storage.log_conversation(
+                        session_id=session_id,
+                        user_id=user_id,
+                        role="user",
+                        content=message,
+                        mode="agent" if state.get("agent") else "direct",
+                    )
+                except Exception as log_err:
+                    print(f"[LOG WARNING] Failed to log user message: {log_err}")
 
             agent = state.get("agent")
+            status_line: str | None = None
 
             if agent is not None:
-                # Full LLM agent path
-                try:
-                    response = agent.process_message(message)
-                    bot_text = response.text or "I've processed that."
-                    # Extract metrics from assessment if available
-                    if response.assessment:
-                        metrics = _assessment_to_metrics(response.assessment)
-                        state["latest_experience_id"] = response.assessment.experience.id
-                        state["latest_assessment"] = response.assessment
-                except Exception as e:
-                    import traceback
-                    error_detail = traceback.format_exc()
-                    print(f"[AGENT ERROR] {e}\n{error_detail}")
-                    bot_text = (
-                        f"[Agent error, falling back to framework]: {e}"
+                # Full LLM agent path -- with retry on transient errors
+                max_retries = 2
+                last_error: Exception | None = None
+
+                for attempt in range(max_retries + 1):
+                    try:
+                        response = agent.process_message(message)
+                        bot_text = response.text or "I've processed that."
+
+                        # Extract metrics from assessment if available
+                        if response.assessment:
+                            metrics = _assessment_to_metrics(response.assessment)
+                            state["latest_experience_id"] = (
+                                response.assessment.experience.id
+                            )
+                            state["latest_assessment"] = response.assessment
+                            status_line = None
+                        else:
+                            # Agent responded conversationally (no tool calls).
+                            # Keep existing metrics but note the status.
+                            tools_used = response.tool_calls_made
+                            if tools_used:
+                                status_line = (
+                                    f"Tools called: {', '.join(tools_used)} "
+                                    f"(no assessment returned)"
+                                )
+                            elif metrics:
+                                status_line = "Conversational turn (metrics from last assessment)"
+                            else:
+                                status_line = (
+                                    "Conversational turn — describe an experience "
+                                    "to start tracking"
+                                )
+
+                        last_error = None
+                        break  # Success
+
+                    except Exception as e:
+                        import traceback
+                        last_error = e
+                        error_detail = traceback.format_exc()
+                        print(
+                            f"[AGENT ERROR attempt {attempt + 1}/{max_retries + 1}] "
+                            f"{e}\n{error_detail}"
+                        )
+                        if attempt < max_retries:
+                            import time as _time
+                            _time.sleep(1.0 * (attempt + 1))
+                            continue
+
+                if last_error is not None:
+                    # All retries exhausted -- fall back to framework but
+                    # do NOT permanently kill the agent.  It may recover on
+                    # the next user message (e.g. after a rate-limit window).
+                    error_count = state.get("_agent_errors", 0) + 1
+                    state["_agent_errors"] = error_count
+                    print(
+                        f"[AGENT] Consecutive error #{error_count}: "
+                        f"{last_error}"
                     )
-                    state["agent"] = None
-                    # Still provide a framework response after the error
+
+                    if error_count >= 3:
+                        # Too many consecutive failures -- disable agent
+                        state["agent"] = None
+                        status_line = (
+                            "⚠️ Agent disabled after repeated errors — "
+                            "using direct framework mode"
+                        )
+                    else:
+                        status_line = (
+                            f"⚠️ Agent error (attempt {error_count}/3) — "
+                            f"falling back this turn"
+                        )
+
                     bot_text_fb, metrics_fb = _build_framework_response(
                         state["system"], state["user_id"], message, state,
                     )
-                    bot_text = f"{bot_text}\n\n---\n\n{bot_text_fb}"
-                    metrics = metrics_fb or metrics
+                    bot_text = bot_text_fb
+                    if metrics_fb:
+                        metrics = metrics_fb
+                else:
+                    # Reset error counter on success
+                    state["_agent_errors"] = 0
             else:
                 # Direct framework path
                 bot_text, new_metrics = _build_framework_response(
@@ -528,20 +609,24 @@ def create_interface():
                 )
                 if new_metrics:
                     metrics = new_metrics
+                status_line = "📊 Direct framework mode"
 
             chat_history = chat_history + [{"role": "assistant", "content": bot_text}]
-            metrics_md = _format_metrics_display(metrics)
+            metrics_md = _format_metrics_display(metrics, status=status_line)
 
             # Log assistant response with metrics snapshot
             if storage:
-                storage.log_conversation(
-                    session_id=session_id,
-                    user_id=user_id,
-                    role="assistant",
-                    content=bot_text,
-                    mode="agent" if state.get("agent") else "direct",
-                    metrics=metrics,
-                )
+                try:
+                    storage.log_conversation(
+                        session_id=session_id,
+                        user_id=user_id,
+                        role="assistant",
+                        content=bot_text,
+                        mode="agent" if state.get("agent") else "direct",
+                        metrics=metrics,
+                    )
+                except Exception as log_err:
+                    print(f"[LOG WARNING] Failed to log assistant message: {log_err}")
 
             return "", chat_history, state, metrics, metrics_md
 

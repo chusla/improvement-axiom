@@ -161,7 +161,7 @@ class LiveSpaceClient:
 # ------------------------------------------------------------------
 
 class LiveSpaceHTTPClient:
-    """Fallback client using direct HTTP calls to the Gradio API."""
+    """Fallback client using direct HTTP calls to the Gradio 5 SSE API."""
 
     def __init__(self, space_id: str, hf_token: str | None = None):
         import httpx
@@ -171,61 +171,100 @@ class LiveSpaceHTTPClient:
         self._chat_history: list = []
         self._state: dict = {}
         self._metrics: Any = None
-        self._client = httpx.Client(timeout=120.0)
+        self._client = httpx.Client(timeout=180.0)
         print(f"  Connecting via HTTP to: {self._base_url}")
 
+    def _extract_text(self, msg: Any) -> str:
+        """Extract plain text from a Gradio chat message."""
+        if isinstance(msg, dict):
+            content = msg.get("content", "")
+            if isinstance(content, list):
+                parts = []
+                for part in content:
+                    if isinstance(part, dict):
+                        parts.append(part.get("text", str(part)))
+                    else:
+                        parts.append(str(part))
+                return " ".join(parts)
+            return str(content)
+        return str(msg)
+
     def send_message(self, message: str) -> str:
-        """Send a message via the Gradio HTTP API."""
-        headers = {}
+        """Send a message via the Gradio 5 SSE API (two-step call)."""
+        headers = {"Content-Type": "application/json"}
         if self._hf_token:
             headers["Authorization"] = f"Bearer {self._hf_token}"
 
-        # Gradio API endpoint
         payload = {
             "data": [
-                message,              # msg_input
-                self._chat_history,   # chatbot
-                self._state,          # chat_state
-                self._metrics,        # latest_metrics
+                message,
+                self._chat_history,
+                self._state,
+                self._metrics,
             ],
-            "fn_index": 0,
             "session_hash": self._session_hash,
         }
 
-        response = self._client.post(
-            f"{self._base_url}/api/predict",
+        # Step 1: POST to initiate the call and get an event_id
+        resp = self._client.post(
+            f"{self._base_url}/gradio_api/call/respond",
             json=payload,
             headers=headers,
         )
+        resp.raise_for_status()
+        event_id = resp.json().get("event_id")
+        if not event_id:
+            raise ConnectionError(f"No event_id returned: {resp.text}")
 
-        if response.status_code != 200:
-            # Try /run/respond endpoint instead
-            response = self._client.post(
-                f"{self._base_url}/run/respond",
-                json=payload,
-                headers=headers,
-            )
+        # Step 2: GET the SSE stream to receive results
+        with self._client.stream(
+            "GET",
+            f"{self._base_url}/gradio_api/call/respond/{event_id}",
+            headers=headers,
+        ) as stream:
+            last_data = None
+            for line in stream.iter_lines():
+                if line.startswith("data: "):
+                    last_data = line[6:]
 
-        response.raise_for_status()
-        data = response.json()
+        if not last_data:
+            raise ConnectionError("No data received from SSE stream")
 
-        result = data.get("data", [])
-        if len(result) >= 5:
+        result = json.loads(last_data)
+        if isinstance(result, list) and len(result) >= 5:
             self._chat_history = result[1] or []
             self._state = result[2] or {}
             self._metrics = result[3]
 
             if self._chat_history:
                 last_msg = self._chat_history[-1]
-                if isinstance(last_msg, dict):
-                    return last_msg.get("content", str(last_msg))
-                elif isinstance(last_msg, (list, tuple)):
-                    return str(last_msg[-1]) if last_msg else ""
-                return str(last_msg)
+                return self._extract_text(last_msg)
 
-        return str(result[-1]) if result else "(empty response)"
+        return str(result[-1]) if isinstance(result, list) and result else "(empty response)"
 
     def reset(self):
+        """Reset conversation state via the clear endpoint."""
+        headers = {"Content-Type": "application/json"}
+        if self._hf_token:
+            headers["Authorization"] = f"Bearer {self._hf_token}"
+
+        try:
+            payload = {"data": [self._state], "session_hash": self._session_hash}
+            resp = self._client.post(
+                f"{self._base_url}/gradio_api/call/clear_conversation",
+                json=payload,
+                headers=headers,
+            )
+            if resp.status_code == 200:
+                event_id = resp.json().get("event_id")
+                if event_id:
+                    self._client.get(
+                        f"{self._base_url}/gradio_api/call/clear_conversation/{event_id}",
+                        headers=headers,
+                    )
+        except Exception:
+            pass
+
         self._chat_history = []
         self._state = {}
         self._metrics = None

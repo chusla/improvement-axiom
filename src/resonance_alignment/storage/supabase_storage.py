@@ -348,7 +348,11 @@ class SupabaseStorage(StorageBackend):
         mode: str = "direct",
         metrics: dict | None = None,
     ) -> None:
-        """Persist a chat message to the conversation_logs table."""
+        """Persist a chat message to the conversation_logs table.
+
+        Raises on failure so the caller can decide how to handle it
+        (e.g. log a warning instead of silently swallowing).
+        """
         try:
             self._client.table("conversation_logs").insert({
                 "session_id": session_id,
@@ -358,9 +362,13 @@ class SupabaseStorage(StorageBackend):
                 "mode": mode,
                 "metrics": json.dumps(metrics) if metrics else None,
             }).execute()
-        except Exception:
-            # Non-critical -- don't break the chat if logging fails
-            pass
+        except Exception as e:
+            import warnings
+            warnings.warn(
+                f"[SupabaseStorage] Failed to log conversation: {e}",
+                stacklevel=2,
+            )
+            raise
 
     def get_conversation_logs(
         self,
