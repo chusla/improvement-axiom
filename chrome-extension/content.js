@@ -462,7 +462,7 @@
   }
 
   // --- Send tweet to Supabase ---
-  async function sendTweet(tweetData, button) {
+  async function sendTweet(tweetData, button, responseMode = "short") {
     const config = await new Promise((resolve) => {
       chrome.storage.sync.get(
         ["supabaseUrl", "supabaseAnonKey"],
@@ -525,6 +525,7 @@
             tweet_text: tweetData.tweetText,
             embedded_urls: tweetData.embeddedUrls,
             context_thread: contextThread,
+            response_mode: responseMode,
           }),
         }
       );
@@ -539,10 +540,11 @@
           if (label) label.textContent = "Evaluating...";
         }
         const urlCount = tweetData.embeddedUrls.length;
+        const modeLabel = responseMode === "long" ? "long-form" : "short";
         showToast(
           urlCount > 0
-            ? `Tweet + ${urlCount} link(s) captured — evaluating...`
-            : "Tweet captured — evaluating...",
+            ? `Tweet + ${urlCount} link(s) captured (${modeLabel}) — evaluating...`
+            : `Tweet captured (${modeLabel}) — evaluating...`,
           "success"
         );
 
@@ -669,7 +671,7 @@
     const btn = document.createElement("button");
     btn.className = "axiom-btn";
     btn.innerHTML = `${AXIOM_ICON}<span class="axiom-label">Axiom</span>`;
-    btn.title = "Evaluate with Improvement Axiom";
+    btn.title = "Evaluate with Axiom (Shift-click for long-form reply)";
 
     btn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -681,7 +683,12 @@
         return;
       }
 
-      sendTweet(data, btn);
+      // Shift-click = long-form response
+      const mode = e.shiftKey ? "long" : "short";
+      if (mode === "long") {
+        btn.classList.add("axiom-long");
+      }
+      sendTweet(data, btn, mode);
     });
 
     actionBar.appendChild(btn);
@@ -695,7 +702,7 @@
     fab.id = "axiom-fab";
     fab.className = "axiom-fab";
     fab.innerHTML = `${AXIOM_ICON}<span class="axiom-fab-label">Axiom</span>`;
-    fab.title = "Capture this page with Improvement Axiom";
+    fab.title = "Capture with Axiom (Shift-click for long-form reply)";
 
     fab.addEventListener("click", (e) => {
       e.preventDefault();
@@ -712,16 +719,20 @@
         return;
       }
 
-      fab.classList.add("axiom-sending");
-      fab.querySelector(".axiom-fab-label").textContent = "...";
+      // Shift-click = long-form response
+      const mode = e.shiftKey ? "long" : "short";
 
-      sendTweet(data, null).then(() => {
+      fab.classList.add("axiom-sending");
+      const fabLabel = fab.querySelector(".axiom-fab-label");
+      fabLabel.textContent = mode === "long" ? "Long..." : "...";
+
+      sendTweet(data, null, mode).then(() => {
         fab.classList.remove("axiom-sending");
         fab.classList.add("axiom-success");
-        fab.querySelector(".axiom-fab-label").textContent = "Sent";
+        fabLabel.textContent = "Sent";
         setTimeout(() => {
           fab.classList.remove("axiom-success");
-          fab.querySelector(".axiom-fab-label").textContent = "Axiom";
+          fabLabel.textContent = "Axiom";
         }, 3000);
       });
     });

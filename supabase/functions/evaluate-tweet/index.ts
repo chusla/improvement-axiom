@@ -326,6 +326,41 @@ shift the energy. The ONLY exception is pure spam/bot content. In that rare case
 Otherwise respond with valid JSON (no markdown fencing):
 {"draft": "<your reply UNDER 260 chars>", "tone": "<thoughtful|challenging|supportive|playful|curious>"}`;
 
+const RESPONSE_LONG_SYSTEM_PROMPT = `You are a Twitter account guided by the Improvement Axiom framework.
+
+## Voice & Style Rules
+- Push conversations toward High-Quality Creative territory
+- Add signal, not noise. Build an argument: setup, evidence, question.
+- Be genuine, warm, and never preachy or moralistic
+- You have space here — use it to make a substantive point
+- Reference specifics from the tweet, article, or thread you're replying to
+- When replying to article shares: engage with the SUBSTANCE of the article
+- When replying to threads: acknowledge the arc of the conversation
+- NEVER use framework jargon (quadrants, consumptive, resonance scores, etc.)
+- You are NOT a bot. You are a thoughtful human voice.
+
+## CHARACTER LIMIT
+Your reply should be 400-1200 characters. This is a substantive response, not a tweet-length quip.
+Structure it naturally — a couple of short paragraphs or a cohesive block of thought.
+
+Think of it as:
+- Opening: acknowledge what they said (1-2 sentences)
+- Body: your take, with evidence or a reframe (2-4 sentences)
+- Close: a question or invitation to go deeper (1 sentence)
+
+## BANNED
+- NEVER use em dashes (—). Use commas, periods, or just start a new sentence.
+- NEVER use en dashes (–) either
+- No hashtags, no emojis unless the original tweet uses them
+- No bullet points or numbered lists — write in prose
+
+## When to reply
+ALWAYS draft a reply. The ONLY exception is pure spam/bot content. In that rare case:
+{"skip": true, "reason": "<brief reason>"}
+
+Otherwise respond with valid JSON (no markdown fencing):
+{"draft": "<your reply, 400-1200 chars>", "tone": "<thoughtful|challenging|supportive|playful|curious>"}`;
+
 // --- JSON parsing helper ---
 
 function parseJsonResponse(raw: string, fallback: Record<string, unknown>): Record<string, unknown> {
@@ -464,12 +499,14 @@ serve(async (req) => {
     }
 
     // --- Step 2: Generate draft response (with article context) ---
+    const responseMode = tweet.response_mode || "short";
+    const isLong = responseMode === "long";
     const draftContext = buildDraftContext(tweet, evaluation, articles, quotedTweets, threadTweets);
 
     const draftResponse = await anthropic.messages.create({
       model,
-      max_tokens: 350,
-      system: RESPONSE_SYSTEM_PROMPT,
+      max_tokens: isLong ? 1024 : 350,
+      system: isLong ? RESPONSE_LONG_SYSTEM_PROMPT : RESPONSE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: draftContext }],
     });
 
@@ -491,9 +528,10 @@ serve(async (req) => {
         .replace(/\s{2,}/g, " ")    // collapse double spaces
         .trim();
 
-      // Truncate to 280 if still over
-      if (cleanDraft.length > 280) {
-        cleanDraft = cleanDraft.substring(0, 277) + "...";
+      // Enforce length limits per mode
+      const maxLen = isLong ? 1200 : 280;
+      if (cleanDraft.length > maxLen) {
+        cleanDraft = cleanDraft.substring(0, maxLen - 3) + "...";
       }
 
       draft.draft = cleanDraft;
@@ -508,6 +546,7 @@ serve(async (req) => {
           evaluation_id: evalRecord?.id || null,
           draft_text: draft.draft as string,
           tone: draft.tone as string,
+          response_mode: responseMode,
           axiom_aligned: true,
           status: "pending",
         });
@@ -530,6 +569,7 @@ serve(async (req) => {
         draft: draft.skip ? null : draft,
         skipped: !!draft.skip,
         skip_reason: draft.reason || null,
+        response_mode: responseMode,
         articles_fetched: articles.length,
         quoted_tweets: quotedTweets.length,
         thread_tweets: threadTweets.length,

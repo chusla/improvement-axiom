@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS ingested_tweets (
     media_urls JSONB DEFAULT '[]',
     embedded_urls JSONB DEFAULT '[]',
     fetched_content JSONB DEFAULT '{}',
+    response_mode TEXT DEFAULT 'short' CHECK (response_mode IN ('short', 'long')),
     ingested_at TIMESTAMPTZ DEFAULT now(),
     processed BOOLEAN DEFAULT FALSE,
     source TEXT DEFAULT 'extension'
@@ -44,6 +45,7 @@ CREATE TABLE IF NOT EXISTS draft_responses (
     draft_text TEXT NOT NULL,
     tone TEXT,
     axiom_aligned BOOLEAN DEFAULT TRUE,
+    response_mode TEXT DEFAULT 'short' CHECK (response_mode IN ('short', 'long')),
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'posted', 'rejected', 'edited')),
     edited_text TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),

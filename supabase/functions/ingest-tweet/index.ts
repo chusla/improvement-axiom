@@ -26,6 +26,7 @@ serve(async (req) => {
     const {
       tweet_url, author_handle, author_name, tweet_text,
       context_thread, media_urls, embedded_urls,
+      response_mode,
     } = await req.json();
 
     if (!tweet_url) {
@@ -46,6 +47,7 @@ serve(async (req) => {
         context_thread: context_thread || [],
         media_urls: media_urls || [],
         embedded_urls: embedded_urls || [],
+        response_mode: response_mode === "long" ? "long" : "short",
       })
       .select()
       .single();
