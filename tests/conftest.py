@@ -2,7 +2,7 @@
 
 import pytest
 
-# Load .env so integration tests pick up ANTHROPIC_API_KEY, SUPABASE_URL, etc.
+# Load .env so integration tests pick up ANTHROPIC_API_KEY, AXIOM_SUPABASE_URL, etc.
 try:
     from dotenv import load_dotenv
     load_dotenv()

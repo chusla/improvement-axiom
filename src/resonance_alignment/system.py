@@ -124,7 +124,7 @@ class ResonanceAlignmentSystem:
     def from_env(cls) -> "ResonanceAlignmentSystem":
         """Create a configured system from environment variables.
 
-        Reads SUPABASE_URL/SUPABASE_KEY for storage.  Convenience wrapper
+        Reads AXIOM_SUPABASE_URL/AXIOM_SUPABASE_SERVICE_ROLE_KEY for storage.  Convenience wrapper
         around ``resonance_alignment.config.from_env()``.
         """
         from resonance_alignment.config import from_env as _from_env

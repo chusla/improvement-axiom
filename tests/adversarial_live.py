@@ -419,8 +419,8 @@ def verify_supabase_logs(
     except ImportError:
         pass
 
-    supabase_url = os.environ.get("SUPABASE_URL")
-    supabase_key = os.environ.get("SUPABASE_KEY")
+    supabase_url = os.environ.get("AXIOM_SUPABASE_URL")
+    supabase_key = os.environ.get("AXIOM_SUPABASE_SERVICE_ROLE_KEY")
 
     if not supabase_url or not supabase_key:
         if verbose:

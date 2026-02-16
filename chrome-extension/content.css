@@ -1,0 +1,133 @@
+/* Axiom button injected into tweet action bars */
+.axiom-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  height: 34px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: rgb(113, 118, 123);
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.axiom-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color: rgb(99, 102, 241);
+}
+
+.axiom-btn.axiom-sending {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.axiom-btn.axiom-success {
+  color: rgb(34, 197, 94);
+}
+
+.axiom-btn.axiom-error {
+  color: rgb(239, 68, 68);
+}
+
+.axiom-btn.axiom-ready {
+  color: rgb(99, 102, 241);
+  font-weight: 700;
+}
+
+.axiom-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+/* Toast notification */
+.axiom-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  z-index: 99999;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.axiom-toast.axiom-toast-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.axiom-toast.axiom-toast-success {
+  background: rgb(34, 197, 94);
+}
+
+.axiom-toast.axiom-toast-error {
+  background: rgb(239, 68, 68);
+}
+
+.axiom-toast.axiom-toast-info {
+  background: rgb(99, 102, 241);
+}
+
+/* Floating Action Button — always visible on X.com */
+.axiom-fab {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  z-index: 99998;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+  transition: all 0.2s ease;
+  opacity: 0.85;
+}
+
+.axiom-fab:hover {
+  opacity: 1;
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+}
+
+.axiom-fab:active {
+  transform: scale(0.97);
+}
+
+.axiom-fab svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.axiom-fab.axiom-sending {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.axiom-fab.axiom-success {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.axiom-fab-label {
+  line-height: 1;
+}

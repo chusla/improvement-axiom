@@ -5,9 +5,9 @@ python-dotenv if available).  Provides factory methods for creating
 configured storage backends and the full system.
 
 Environment variables:
-    SUPABASE_URL       -- Supabase project URL (enables SupabaseStorage)
-    SUPABASE_KEY       -- Supabase service-role key
-    ANTHROPIC_API_KEY  -- Anthropic API key (enables agent integration)
+    AXIOM_SUPABASE_URL              -- Supabase project URL (enables SupabaseStorage)
+    AXIOM_SUPABASE_SERVICE_ROLE_KEY -- Supabase service-role key
+    ANTHROPIC_API_KEY               -- Anthropic API key (enables agent integration)
 """
 
 from __future__ import annotations
@@ -32,13 +32,13 @@ def _load_dotenv() -> None:
 def get_supabase_url() -> str | None:
     """Return Supabase URL from environment, or None."""
     _load_dotenv()
-    return os.environ.get("SUPABASE_URL")
+    return os.environ.get("AXIOM_SUPABASE_URL")
 
 
 def get_supabase_key() -> str | None:
     """Return Supabase service-role key from environment, or None."""
     _load_dotenv()
-    return os.environ.get("SUPABASE_KEY")
+    return os.environ.get("AXIOM_SUPABASE_SERVICE_ROLE_KEY")
 
 
 def get_anthropic_key() -> str | None:
@@ -50,8 +50,8 @@ def get_anthropic_key() -> str | None:
 def get_storage() -> "StorageBackend":
     """Create a storage backend based on environment configuration.
 
-    Returns SupabaseStorage if SUPABASE_URL and SUPABASE_KEY are set,
-    otherwise returns InMemoryStorage.
+    Returns SupabaseStorage if AXIOM_SUPABASE_URL and AXIOM_SUPABASE_SERVICE_ROLE_KEY
+    are set, otherwise returns InMemoryStorage.
     """
     from resonance_alignment.storage.memory import InMemoryStorage
 
@@ -77,7 +77,7 @@ def get_storage() -> "StorageBackend":
 def from_env() -> "ResonanceAlignmentSystem":
     """Create a fully configured ResonanceAlignmentSystem from environment.
 
-    Reads SUPABASE_URL/SUPABASE_KEY for storage and sets up the system.
+    Reads AXIOM_SUPABASE_URL/AXIOM_SUPABASE_SERVICE_ROLE_KEY for storage and sets up the system.
     If ANTHROPIC_API_KEY is set, an AgentWebClient can be constructed
     separately by the caller.
 

@@ -11,8 +11,8 @@ TABLES REQUIRED (run the SQL in supabase_schema.sql):
 
 SETUP:
   pip install supabase
-  export SUPABASE_URL="https://your-project.supabase.co"
-  export SUPABASE_KEY="your-service-role-key"
+  export AXIOM_SUPABASE_URL="https://your-project.supabase.co"
+  export AXIOM_SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 
 The schema is designed for the vector-based architecture:
 trajectories are the primary entity, experiences are children,
