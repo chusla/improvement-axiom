@@ -76,6 +76,9 @@ class SupabaseStorage(StorageBackend):
                 "supabase is required for Supabase storage.  "
                 "Install it with: pip install supabase"
             )
+        # Track already-persisted snapshots to avoid redundant upserts.
+        # Key: (user_id, experience_id_or_none, timestamp_iso)
+        self._saved_snapshots: set[tuple[str, str | None, str]] = set()
 
     # ------------------------------------------------------------------
     # Trajectories
@@ -143,6 +146,10 @@ class SupabaseStorage(StorageBackend):
                 experience.vector_snapshots.append(
                     self._row_to_vector_snapshot(vs_row)
                 )
+                # Mark as already persisted so save_trajectory won't re-upsert
+                self._saved_snapshots.add(
+                    (user_id, experience.id, vs_row["created_at"])
+                )
 
             trajectory.experiences.append(experience)
 
@@ -158,6 +165,9 @@ class SupabaseStorage(StorageBackend):
         for vs_row in hist_result.data:
             trajectory.vector_history.append(
                 self._row_to_vector_snapshot(vs_row)
+            )
+            self._saved_snapshots.add(
+                (user_id, None, vs_row["created_at"])
             )
 
         return trajectory
@@ -271,6 +281,9 @@ class SupabaseStorage(StorageBackend):
         user_id: str,
         experience_id: str | None,
     ) -> None:
+        key = (user_id, experience_id, vs.timestamp.isoformat())
+        if key in self._saved_snapshots:
+            return  # Already persisted this session
         self._client.table("vector_snapshots").upsert({
             "user_id": user_id,
             "experience_id": experience_id,
@@ -280,6 +293,7 @@ class SupabaseStorage(StorageBackend):
             "confidence": vs.confidence,
             "horizon": vs.horizon.value,
         }).execute()
+        self._saved_snapshots.add(key)
 
     # ------------------------------------------------------------------
     # Row → model converters
