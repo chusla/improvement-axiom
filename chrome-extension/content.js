@@ -186,6 +186,44 @@
     return { text: "", el: null };
   }
 
+  // --- Extract image URLs from a tweet ---
+  function extractImages(container) {
+    const images = [];
+    if (!container) return images;
+
+    // Twitter images: data-testid="tweetPhoto" wraps the photo links
+    const photoEls = container.querySelectorAll('[data-testid="tweetPhoto"] img');
+    for (const img of photoEls) {
+      let src = img.src || "";
+      if (!src || !src.includes("pbs.twimg.com")) continue;
+
+      // Request the largest available version
+      try {
+        const url = new URL(src);
+        url.searchParams.set("name", "large");
+        src = url.toString();
+      } catch {
+        // keep original if URL parsing fails
+      }
+
+      if (!images.includes(src)) {
+        images.push(src);
+      }
+    }
+
+    // Also catch images in quoted tweets or cards that use background-image
+    const bgEls = container.querySelectorAll('[data-testid="tweetPhoto"] [style*="background-image"]');
+    for (const el of bgEls) {
+      const style = el.style.backgroundImage || "";
+      const match = style.match(/url\("?(https:\/\/pbs\.twimg\.com[^")\s]+)"?\)/);
+      if (match && !images.includes(match[1])) {
+        images.push(match[1]);
+      }
+    }
+
+    return images;
+  }
+
   // --- Extract tweet data from any container (article element or page section) ---
   function extractTweetData(container) {
     const { text: tweetText, el: textEl } = extractText(container);
@@ -219,6 +257,9 @@
     // Article card
     const articleCard = extractArticleCard(container);
 
+    // Images
+    const mediaUrls = extractImages(container);
+
     // Merge URLs
     if (articleCard?.url && !uniqueUrls.includes(articleCard.url)) {
       uniqueUrls.push(articleCard.url);
@@ -234,6 +275,7 @@
       authorHandle,
       tweetUrl,
       urlCount: uniqueUrls.length,
+      imageCount: mediaUrls.length,
       hasQuote: !!quotedTweet,
       hasCard: !!articleCard,
     });
@@ -244,6 +286,7 @@
       authorName,
       tweetUrl,
       embeddedUrls: uniqueUrls,
+      mediaUrls,
       quotedTweet,
       articleCard,
     };
@@ -524,6 +567,7 @@
             author_name: tweetData.authorName,
             tweet_text: tweetData.tweetText,
             embedded_urls: tweetData.embeddedUrls,
+            media_urls: tweetData.mediaUrls || [],
             context_thread: contextThread,
             response_mode: responseMode,
           }),
@@ -540,10 +584,14 @@
           if (label) label.textContent = "Evaluating...";
         }
         const urlCount = tweetData.embeddedUrls.length;
+        const imgCount = (tweetData.mediaUrls || []).length;
         const modeLabel = responseMode === "long" ? "long-form" : "short";
+        const extras = [];
+        if (urlCount > 0) extras.push(`${urlCount} link(s)`);
+        if (imgCount > 0) extras.push(`${imgCount} image(s)`);
         showToast(
-          urlCount > 0
-            ? `Tweet + ${urlCount} link(s) captured (${modeLabel}) — evaluating...`
+          extras.length > 0
+            ? `Tweet + ${extras.join(" + ")} captured (${modeLabel}) — evaluating...`
             : `Tweet captured (${modeLabel}) — evaluating...`,
           "success"
         );
