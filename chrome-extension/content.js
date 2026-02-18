@@ -369,10 +369,11 @@
         const focused = threadParts[focusedIndex];
         const focusedData = extractTweetData(focused.article);
 
-        // Collect thread context: all tweets before the focused one
+        // Collect ALL conversation context ABOVE the focused tweet
+        // This includes the original tweet, any replies leading up to it,
+        // and the user's own thread tweets -- the full conversation.
         const threadContext = [];
-        for (let i = 0; i <= focusedIndex; i++) {
-          if (i === focusedIndex) continue; // Skip the focused tweet itself
+        for (let i = 0; i < focusedIndex; i++) {
           const part = threadParts[i];
           if (part.text) {
             const partUrls = [...extractUrls(part.article)];
@@ -380,7 +381,7 @@
             const partCard = extractArticleCard(part.article);
 
             threadContext.push({
-              type: "thread_tweet",
+              type: "conversation",
               position: i + 1,
               author: part.authorHandle,
               text: part.text,
@@ -389,7 +390,6 @@
               article_card: partCard,
             });
 
-            // Merge URLs from thread tweets into the main embedded URLs
             for (const u of partUrls) {
               if (!focusedData.embeddedUrls.includes(u)) {
                 focusedData.embeddedUrls.push(u);
@@ -398,32 +398,6 @@
             if (partCard?.url && !focusedData.embeddedUrls.includes(partCard.url)) {
               focusedData.embeddedUrls.push(partCard.url);
             }
-          }
-        }
-
-        // Also collect tweets AFTER the focused one from the same author (thread continues)
-        for (let i = focusedIndex + 1; i < threadParts.length; i++) {
-          const part = threadParts[i];
-          if (part.authorHandle.toLowerCase() === focused.authorHandle.toLowerCase() && part.text) {
-            const partUrls = [...extractUrls(part.article)];
-            const partCard = extractArticleCard(part.article);
-
-            threadContext.push({
-              type: "thread_tweet",
-              position: i + 1,
-              author: part.authorHandle,
-              text: part.text,
-              urls: partUrls,
-              article_card: partCard,
-            });
-
-            for (const u of partUrls) {
-              if (!focusedData.embeddedUrls.includes(u)) {
-                focusedData.embeddedUrls.push(u);
-              }
-            }
-          } else {
-            break; // Different author = replies, stop
           }
         }
 

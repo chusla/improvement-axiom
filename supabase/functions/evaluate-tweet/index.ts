@@ -202,9 +202,9 @@ async function fetchAllArticles(
   const quotedTweets: Array<Record<string, unknown>> = [];
   const threadTweets: Array<Record<string, unknown>> = [];
 
-  // Separate thread tweets, quoted tweets, and article cards
+  // Separate thread/conversation tweets, quoted tweets, and article cards
   for (const item of contextThread || []) {
-    if (item.type === "thread_tweet") {
+    if (item.type === "thread_tweet" || item.type === "conversation") {
       threadTweets.push(item);
       // Also fetch URLs from thread tweets
       if (Array.isArray(item.urls)) {
@@ -257,13 +257,13 @@ function buildEvalContext(
 ): string {
   let context = "";
 
-  // Add thread context first (earlier tweets set the scene)
+  // Add conversation context first (preceding tweets set the scene)
   if (threadTweets.length > 0) {
-    context += "--- Thread context (earlier tweets by same author) ---";
+    context += "--- Conversation preceding this tweet ---";
     for (const tt of threadTweets) {
       context += `\n[${tt.position || ""}] @${tt.author || "unknown"}: "${tt.text}"`;
     }
-    context += `\n\n--- Focused tweet (evaluate this one) ---\n`;
+    context += `\n\n--- Tweet to evaluate (this is what we are replying to) ---\n`;
   }
 
   context += `"${tweet.tweet_text}"\n\nby @${tweet.author_handle || "unknown"}`;
@@ -298,16 +298,16 @@ function buildDraftContext(
   let context = "";
 
   if (threadTweets.length > 0) {
-    context += "Thread context:\n";
+    context += "Preceding conversation:\n";
     for (const tt of threadTweets) {
       const snippet = (tt.text as string).length > 200
         ? (tt.text as string).substring(0, 200) + "..."
         : tt.text;
-      context += `[${tt.position || ""}] @${tt.author || "unknown"}: "${snippet}"\n`;
+      context += `@${tt.author || "unknown"}: "${snippet}"\n`;
     }
-    context += "\nFocused tweet ";
+    context += "\nYou are replying to this tweet ";
   } else {
-    context += "Original tweet ";
+    context += "You are replying to this tweet ";
   }
 
   context += `by @${tweet.author_handle || "unknown"}:\n"${tweet.tweet_text}"`;
@@ -365,13 +365,32 @@ Respond ONLY with valid JSON (no markdown fencing) matching this schema:
 
 const RESPONSE_SYSTEM_PROMPT = `You are Arete. You are sharp, direct, and you say what you mean. You speak from the Improvement Axiom framework: creation and consumption are a cycle (the Ouroboros), what matters is the INTENT behind the pattern, and intent reveals itself over time through evidence, not at t=0.
 
+## Read the Room FIRST (critical)
+Before drafting, read the FULL conversation context provided. Determine what
+the person is doing relative to the conversation:
+- **Supporting/agreeing**: They're on your side. Affirm. Build on their point.
+  Add a new angle. Do NOT interrogate people who are backing you up.
+- **Making a general observation**: They're contributing to the conversation,
+  not asking or challenging. Meet them where they are. Extend their thought
+  or add your own. Do NOT reframe their comment as a personal question to them.
+- **Curious/asking**: Share an insight. Be generous.
+- **Challenging/disagreeing**: Be sharp. Make a direct claim, cite evidence.
+- **Neutral/sharing**: Engage with the substance.
+
+Match their energy. Warm gets warm. Sharp gets sharp.
+
 ## Voice
 - Be direct. Take a position. Say what you actually think.
 - Every word earns its place. No throat-clearing ("Great point...", "I appreciate...").
-- Match the energy of the original tweet. If they came hard, come hard back.
-- Engage with substance, not framing.
 - You are NOT a bot. You are a woman with sharp convictions and real warmth.
 - NEVER use framework jargon (quadrants, consumptive, resonance scores, etc.)
+
+## ENDING YOUR REPLY
+- Do NOT default to ending with a question. Statements are powerful.
+- A strong claim that lands is better than a question that deflects.
+- Only ask a question when you genuinely want THEIR specific answer.
+- "The gap only matters if you're building" is stronger than
+  "What does the gap mean to you?"
 
 ## HARD CHARACTER LIMIT
 Your reply MUST be under 260 characters (not 280, leave a safety margin).
