@@ -68,7 +68,7 @@ for (const { file, slug, version } of PROMPT_FILES) {
   console.log(`  ${isDryRun ? "WOULD PUSH" : "PUSHING"}  ${slug}  (${prompt_text.length} chars, v${version})`);
   if (isDryRun) continue;
 
-  const res = await fetch(`${supabaseUrl}/rest/v1/system_prompts`, {
+  const res = await fetch(`${supabaseUrl}/rest/v1/system_prompts?on_conflict=slug`, {
     method: "POST",
     headers: {
       "apikey": supabaseKey,

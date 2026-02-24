@@ -60,14 +60,35 @@
 
   // --- Extract quoted tweet content ---
   function extractQuotedTweet(container) {
-    const quoteContainer =
-      container.querySelector('[data-testid="quoteTweet"]') ||
-      container.querySelector('div[role="link"][tabindex="0"] article') ||
-      container.querySelector('div[role="blockquote"]');
+    // Strategy 1: explicit quoteTweet testid (most reliable)
+    let quoteContainer = container.querySelector('[data-testid="quoteTweet"]');
+
+    // Strategy 2: any clickable tweet card that contains tweet text.
+    // X doesn't always use [data-testid="quoteTweet"] — especially in timeline view.
+    // A quoted tweet card is a div[role="link"] wrapping tweet content.
+    if (!quoteContainer) {
+      const candidates = container.querySelectorAll('div[role="link"][tabindex="0"]');
+      for (const el of candidates) {
+        if (el.querySelector('[data-testid="tweetText"]')) {
+          quoteContainer = el;
+          break;
+        }
+      }
+    }
+
+    // Strategy 3: blockquote fallback
+    if (!quoteContainer) {
+      quoteContainer = container.querySelector('div[role="blockquote"]');
+    }
 
     if (!quoteContainer) return null;
 
     const quoteTextEl = quoteContainer.querySelector('[data-testid="tweetText"]');
+
+    // Guard: don't re-use the main tweet's own text element
+    const mainTextEl = container.querySelector('[data-testid="tweetText"]');
+    if (quoteTextEl && quoteTextEl === mainTextEl) return null;
+
     const quoteText = quoteTextEl ? quoteTextEl.innerText.trim() : "";
 
     let quoteAuthor = "";
