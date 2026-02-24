@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "scripts": {
+    "prompts:push": "node scripts/prompts-push.js",
+    "prompts:push:dry": "node scripts/prompts-push.js --dry-run"
+  }
+}
