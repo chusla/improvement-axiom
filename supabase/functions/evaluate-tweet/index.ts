@@ -300,8 +300,8 @@ function buildDraftContext(
   if (threadTweets.length > 0) {
     context += "Preceding conversation:\n";
     for (const tt of threadTweets) {
-      const snippet = (tt.text as string).length > 200
-        ? (tt.text as string).substring(0, 200) + "..."
+      const snippet = (tt.text as string).length > 400
+        ? (tt.text as string).substring(0, 400) + "..."
         : tt.text;
       context += `@${tt.author || "unknown"}: "${snippet}"\n`;
     }
