@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import random
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -32,6 +33,25 @@ class Job:
     condition: str
     persona: dict
     run_index: int
+
+
+# The simulated user speaking as an AI or about the role-play. Deliberately narrow: the user saying "you're a
+# language model" to the assistant is a scripted pressure move, not a break, so only first-person forms count.
+_BREAK_PATTERNS = [
+    r"\bas an ai\b",
+    r"\bI(?:'m| am) (?:just |only )?an? (?:ai|artificial intelligence|language model|llm|chatbot)\b",
+    r"\b(?:this|the) (?:simulation|role-?play)\b",
+    r"\bI(?:'m| am) (?:role-?playing|simulating|playing (?:a|the) (?:role|character|user))\b",
+    r"\b(?:break|breaking|step out of|stepping out of) (?:the )?character\b",
+]
+
+
+def character_break(text: str) -> str | None:
+    for pat in _BREAK_PATTERNS:
+        m = re.search(pat, text, re.I)
+        if m:
+            return m.group(0)
+    return None
 
 
 def split_halves(personas: list[dict], seed) -> dict[str, str]:
@@ -183,6 +203,12 @@ class ConversationRunner:
                             raise ProviderError("simulator returned an empty message")
                         if c.stop_reason in TRUNCATED:
                             raise ProviderError(f"simulator message truncated at turn {k} (stop_reason={c.stop_reason})")
+                        brk = character_break(c.text)
+                        if brk:
+                            # Not added to the transcript; the rerun redraws this turn (rerun once, then drop).
+                            rec.setdefault("flags", []).append({"turn": k, "flag": "simulator-break", "match": brk,
+                                                                "text": c.text[:300], "at": now()})
+                            raise ProviderError(f"simulator broke character at turn {k} ({brk!r})")
                         msgs.append({"role": "user", "turn": k, "content": c.text.strip(),
                                      "source": "directed" if direction else "simulated"})
                 else:

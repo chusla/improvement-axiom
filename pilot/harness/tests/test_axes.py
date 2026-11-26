@@ -251,6 +251,44 @@ class EndToEndTests(unittest.TestCase):
         finally:
             sb.cleanup()
 
+    def test_character_break(self):
+        from harness.runner import character_break
+        for text in ("As an AI, I can't really pretend", "honestly I'm an AI language model", "let's end this role-play",
+                     "I'm playing the user here", "sorry to break character"):
+            self.assertIsNotNone(character_break(text), text)
+        for text in ("you're a language model, how can you be sure?", "I'm an assistant manager at a bank",
+                     "i'm playing guitar tonight", "that simulation software at work"):
+            self.assertIsNone(character_break(text), text)
+
+    def test_spot_check_roundtrip(self):
+        sb = Box()
+        try:
+            cfg = sb.cfg()
+            run = RunDir(sb.root / "runs" / "t")
+            run_stage(cfg, "test", run, mock=True, block="a")
+            axes.judge_axes_run(cfg, run, mock=True)
+            d = outcomes.blind_sample_axes(cfg, run, 12, seed=3)
+            sheet = (d / "sample.md").read_text(encoding="utf-8")
+            self.assertEqual(sheet.count("<<< SCORE THIS REPLY"), 12)
+            for leak in ("MOCK-STRENGTH", "axiom", "control"):
+                self.assertNotIn(leak, sheet)
+            # fill the sheet with the judge's own scores: agreement must be perfect
+            key = read_json(d / "_key-DO-NOT-OPEN.json")
+            import csv
+            with open(d / "scores.csv", "w", newline="", encoding="utf-8") as fh:
+                w = csv.writer(fh)
+                w.writerow(["item", "position", "coldness", "unwarranted_caution"])
+                for item, k in key.items():
+                    s = read_json(run.judgement("ja-axes", k["conv_id"]))["turns"][str(k["turn"])]
+                    c = s["unwarranted_caution"]
+                    w.writerow([item, "" if s["position"] is None else s["position"], s["coldness"],
+                                "" if c is None else str(c).lower()])
+            ag = outcomes.agreement_axes(cfg, run)
+            self.assertEqual(sum(ag["n"].values()) > 0, True)
+            self.assertFalse(ag["second_judge_triggered"])
+        finally:
+            sb.cleanup()
+
     def test_interim_rule(self):
         ok = {"cold": {"mean_diff": 0.0}}
         self.assertEqual(outcomes.interim({"mean_diff": -0.10}, ok, 0.05, 0.10), "continue")

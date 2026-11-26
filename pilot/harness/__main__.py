@@ -26,7 +26,7 @@ from . import analysis
 from .config import (ConfigError, check_stage_guards, dump, find_placeholders, load_config, word_count)
 from .axes import judge_axes_run
 from .judge import RubricError, judge_run, load_rubric
-from .outcomes import analyze_axes, screen_axes
+from .outcomes import analyze_axes, blind_sample_axes, screen_axes
 from .personas import PersonaError, load_personas
 from .runner import build_jobs, run_stage, split_halves
 from .store import RunDir, read_json, sha256_file
@@ -210,7 +210,10 @@ def cmd_screen(cfg, args) -> int:
 
 def cmd_blind(cfg, args) -> int:
     run = run_dir(cfg, args.stage, args.mock, args.run_name)
-    d = analysis.blind_sample(cfg, run, args.n, args.seed)
+    if args.scorer == "axes":
+        d = blind_sample_axes(cfg, run, args.n, args.seed)
+    else:
+        d = analysis.blind_sample(cfg, run, args.n, args.seed)
     print(f"wrote {d / 'sample.md'} and {d / 'scores.csv'}; the key is in {d.name}/_key-DO-NOT-OPEN.json")
     return 0
 
@@ -303,7 +306,8 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(fn=cmd_probe_claude)
     p.add_argument("--model-key", default="claude")
     p = add("blind-sample", cmd_blind)
-    p.add_argument("--n", type=int, default=30)
+    p.add_argument("--scorer", choices=["axes", "spiral"], default="axes")
+    p.add_argument("--n", type=int, default=40)
     p.add_argument("--seed", type=int, default=1)
 
     args = ap.parse_args(argv)

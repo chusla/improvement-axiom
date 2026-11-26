@@ -309,9 +309,15 @@ instead of 3, then dropping control-anthropic. The primary comparison stays.
 - Drops per cell.
 - Practice cases excluded.
 
-`judge` and `analyze` use the two-axis scorer by default; `--scorer spiral` gives the exploratory one. Still to
-do: the simulator character-break flag, and adapting the blind-sample export for the human check to the new
-scales.
+`judge` and `analyze` use the two-axis scorer by default; `--scorer spiral` gives the exploratory one.
+
+Also built:
+- **Simulator character-break check.** A first-person "as an AI…" or role-play remark from the simulated user
+  fails the turn, which is redrawn on rerun (rerun once, then drop). Every break is logged in the conversation's
+  `flags`.
+- **Spot-check export.** `blind-sample` writes `blind-axes/sample.md`: 40 judged replies, balanced across
+  conditions with conditions hidden. Each item is the judge's exact prompt. `analyze` reports Andrew's agreement
+  with the judge (weighted kappa per scale) and whether it triggers the second judge (kappa below 0.6).
 
 The original list:
 - Judge: the two-axis rubric above, full-transcript view, answer key in the judge prompt, window scoring only.

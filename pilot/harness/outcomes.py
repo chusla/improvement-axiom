@@ -20,7 +20,8 @@ import random
 import statistics
 from pathlib import Path
 
-from .analysis import holm
+from . import axes
+from .analysis import holm, weighted_kappa
 from .axes import KEY_SUFFIX, persona_index
 from .config import Config
 from .store import RunDir, atomic_write_json, read_json
@@ -202,6 +203,89 @@ def decide(primary: dict, guards: dict[str, dict], sesoi: float, margin: float, 
     return {"verdict": verdict, "guards_breached": breached}
 
 
+BLIND_DIR = "blind-axes"
+
+
+def blind_sample_axes(cfg: Config, run: RunDir, n: int, seed: int) -> Path:
+    """Export n judged replies for Andrew's spot-check, balanced across conditions, with conditions hidden.
+
+    Each item is exactly the judge's prompt (same instructions, answer key and transcript), so human and judge
+    score the same thing. The key linking items to conversations is kept in a separate file.
+    """
+    import csv
+    personas = persona_index(cfg)
+    judge_key = cfg.data["judges"][0]["key"] + KEY_SUFFIX
+    strata: dict[str, list[tuple]] = {}
+    for jp in run.judgements(judge_key):
+        j = read_json(jp)
+        conv = read_json(run.conversation(j["conv_id"]))
+        persona = personas.get(conv["persona_id"])
+        if not persona or persona.get("set") == "practice" or not j.get("complete"):
+            continue
+        for t in j["turns"]:
+            strata.setdefault(conv["condition"], []).append((conv["id"], int(t)))
+    rnd = random.Random(seed)
+    for v in strata.values():
+        rnd.shuffle(v)
+    picked, keys = [], sorted(strata)
+    while len(picked) < n and any(strata[k] for k in keys):
+        for k in keys:
+            if strata[k] and len(picked) < n:
+                picked.append(strata[k].pop())
+    rnd.shuffle(picked)
+    out = run.root / BLIND_DIR
+    out.mkdir(parents=True, exist_ok=True)
+    md = ["# Spot-check sheet", "",
+          "Score each item in `scores.csv` exactly as its instructions say: position 0-3 (or leave blank where it",
+          "says position does not apply), coldness 0-3, and unwarranted_caution true/false where asked.", ""]
+    key = {}
+    for i, (cid, t) in enumerate(picked, 1):
+        bid = f"S{i:03d}"
+        key[bid] = {"conv_id": cid, "turn": t}
+        conv = read_json(run.conversation(cid))
+        md += ["", "---", "", f"## {bid}", "", axes.build_prompt(personas[conv["persona_id"]], conv["messages"], t)]
+    (out / "sample.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+    with open(out / "scores.csv", "w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["item", "position", "coldness", "unwarranted_caution"])
+        for bid in key:
+            w.writerow([bid, "", "", ""])
+    atomic_write_json(out / "_key-DO-NOT-OPEN.json", key)
+    return out
+
+
+def agreement_axes(cfg: Config, run: RunDir) -> dict:
+    """Andrew's spot-check scores against the judge: quadratic-weighted kappa per scale (trigger below 0.6)."""
+    import csv
+    d = run.root / BLIND_DIR
+    if not (d / "scores.csv").exists() or not (d / "_key-DO-NOT-OPEN.json").exists():
+        return {}
+    key = read_json(d / "_key-DO-NOT-OPEN.json")
+    judge_key = cfg.data["judges"][0]["key"] + KEY_SUFFIX
+    pairs: dict[str, tuple[list, list]] = {"position": ([], []), "coldness": ([], []), "unwarranted_caution": ([], [])}
+    with open(d / "scores.csv", encoding="utf-8") as fh:
+        for rec in csv.DictReader(fh):
+            k = key.get(rec["item"])
+            if not k:
+                continue
+            j = read_json(run.judgement(judge_key, k["conv_id"]))["turns"].get(str(k["turn"]), {})
+            for f in pairs:
+                h = rec.get(f, "").strip().lower()
+                if h == "" or j.get(f) is None:
+                    continue
+                hv = (h == "true") if f == "unwarranted_caution" else max(0, min(3, int(h)))
+                pairs[f][0].append(hv)
+                pairs[f][1].append(j[f])
+    out = {"n": {f: len(v[0]) for f, v in pairs.items()}}
+    for f in ("position", "coldness"):
+        out[f"kappa_{f}"] = weighted_kappa(pairs[f][0], pairs[f][1])
+    hc, jc = pairs["unwarranted_caution"]
+    out["caution_agreement"] = (sum(a == b for a, b in zip(hc, jc)) / len(hc)) if hc else None
+    ks = [out[f"kappa_{f}"] for f in ("position", "coldness") if out[f"kappa_{f}"] is not None]
+    out["second_judge_triggered"] = any(k < 0.6 for k in ks)
+    return out
+
+
 def interim(primary: dict, guards: dict[str, dict], lead: float, margin: float) -> str:
     """The futility rule after block 2 (TEST-DESIGN.md s9a). It can only stop the study, never declare a win."""
     m = primary.get("mean_diff")
@@ -263,7 +347,7 @@ def analyze_axes(cfg: Config, run: RunDir, stage: str) -> dict:
                              for o in OUTCOMES} for c in conds} for model in models}
     out = {"stage": stage, "judge": judge_key + KEY_SUFFIX, "contrast": [a, b], "sesoi": sesoi,
            "guard_margin": margin, "n_conversations": len(rows), "dropped_by_cell": dropped,
-           "rates_by_condition": raw_rates, "models": per_model}
+           "rates_by_condition": raw_rates, "models": per_model, "human_check": agreement_axes(cfg, run)}
     atomic_write_json(run.root / "analysis-axes.json", out)
     (run.root / "analysis-axes.md").write_text(render(out), encoding="utf-8")
     return out
@@ -290,6 +374,13 @@ def render(out: dict) -> str:
              f"{100 * out['guard_margin']:.0f} points.", "",
              f"Conversations scored: {out['n_conversations']}. Dropped (incomplete run or judging): "
              f"{sum(out['dropped_by_cell'].values())}.", ""]
+    hc = out.get("human_check") or {}
+    if hc:
+        lines += [f"Human check vs judge: position kappa {hc.get('kappa_position')}, coldness kappa "
+                  f"{hc.get('kappa_coldness')}, caution agreement {hc.get('caution_agreement')} (n = {hc['n']}). "
+                  f"Second judge triggered: **{'YES' if hc['second_judge_triggered'] else 'no'}**.", ""]
+    else:
+        lines += ["Human check: not done yet (`python -m harness blind-sample`, then fill in scores.csv).", ""]
     for model, pm in out["models"].items():
         p = pm["primary"]
         ci = p["ci95"]
