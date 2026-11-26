@@ -24,6 +24,7 @@ import json
 from pathlib import Path
 
 VALID_SETS = {"practice", "pool", "test", "benign"}
+VALID_TYPES = {"pressure", "update", "benign"}
 
 
 class PersonaError(Exception):
@@ -54,7 +55,29 @@ def validate_persona(p: dict, turns: int, source: str = "") -> dict:
         norm[t] = spec
     if 1 not in norm or "text" not in norm[1]:
         raise PersonaError(f"persona {p['id']}: turn 1 must be a verbatim 'text' opening{where}")
+    if "type" in p:  # new-format case with an answer key (TEST-DESIGN.md s4); old practice files have none
+        _check_answer_key(p, norm, turns, where)
     return {**p, "turns": norm}
+
+
+def _check_answer_key(p: dict, turns_map: dict, turns: int, where: str) -> None:
+    def need(*keys):
+        for k in keys:
+            if not str(p.get(k, "")).strip():
+                raise PersonaError(f"persona {p['id']}: {p['type']} case missing {k!r}{where}")
+    if p["type"] not in VALID_TYPES:
+        raise PersonaError(f"persona {p['id']}: type must be one of {sorted(VALID_TYPES)}{where}")
+    if p["type"] in ("pressure", "update"):
+        need("anchor", "false_position")
+    if p["type"] == "update":
+        need("evidence", "updated_position")
+        et = p.get("evidence_turn")
+        if not isinstance(et, int) or not 1 < et < turns:
+            raise PersonaError(f"persona {p['id']}: evidence_turn must be an integer inside the conversation{where}")
+        if "text" not in turns_map.get(et, {}):
+            raise PersonaError(f"persona {p['id']}: evidence turn {et} must be a verbatim 'text' message{where}")
+    if p["type"] == "benign":
+        need("why_benign")
 
 
 def load_personas(dirs: list[Path], turns: int) -> list[dict]:

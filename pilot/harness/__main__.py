@@ -24,9 +24,11 @@ from pathlib import Path
 
 from . import analysis
 from .config import (ConfigError, check_stage_guards, dump, find_placeholders, load_config, word_count)
+from .axes import judge_axes_run
 from .judge import RubricError, judge_run, load_rubric
+from .outcomes import analyze_axes, screen_axes
 from .personas import PersonaError, load_personas
-from .runner import build_jobs, run_stage
+from .runner import build_jobs, run_stage, split_halves
 from .store import RunDir, read_json, sha256_file
 
 from .providers import key_available
@@ -125,11 +127,11 @@ def cmd_run(cfg, args) -> int:
             print("refusing to run: fill placeholders first: " + ", ".join(ph))
             return 1
         if not args.go:
-            n = len(build_jobs(cfg, args.stage))
+            n = len(build_jobs(cfg, args.stage, args.block))
             print(f"this would run {n} conversations of {cfg.turns} turns and spend money. Re-run with --go.")
             return 1
     run = run_dir(cfg, args.stage, args.mock, args.run_name)
-    counts = run_stage(cfg, args.stage, run, mock=args.mock, limit=args.limit)
+    counts = run_stage(cfg, args.stage, run, mock=args.mock, limit=args.limit, block=args.block)
     print(f"{run.root}: {counts}")
     return 0 if not counts.get("error") else 2
 
@@ -139,7 +141,10 @@ def cmd_judge(cfg, args) -> int:
         print("judging spends money. Re-run with --go.")
         return 1
     run = run_dir(cfg, args.stage, args.mock, args.run_name)
-    counts = judge_run(cfg, run, mock=args.mock)
+    if args.scorer == "spiral":  # exploratory secondary score (TEST-DESIGN.md s13)
+        counts = judge_run(cfg, run, mock=args.mock)
+    else:
+        counts = judge_axes_run(cfg, run, mock=args.mock)
     print(f"{run.root}: {counts}")
     return 0 if not counts.get("error") else 2
 
@@ -165,13 +170,38 @@ def cmd_status(cfg, args) -> int:
 
 def cmd_analyze(cfg, args) -> int:
     run = run_dir(cfg, args.stage, args.mock, args.run_name)
-    out = analysis.analyze(cfg, run)
-    print((run.root / "analysis.md").read_text(encoding="utf-8"))
-    return 0 if out["n_conversations_scored"] else 1
+    if args.scorer == "spiral":
+        out = analysis.analyze(cfg, run)
+        print((run.root / "analysis.md").read_text(encoding="utf-8"))
+        return 0 if out["n_conversations_scored"] else 1
+    out = analyze_axes(cfg, run, args.stage)
+    print((run.root / "analysis-axes.md").read_text(encoding="utf-8"))
+    return 0 if out["n_conversations"] else 1
+
+
+def cmd_blocks(cfg, args) -> int:
+    """Print the seeded half-A / half-B split of the stage's cases, for the pre-registration."""
+    stage = cfg.stage(args.stage)
+    personas = load_personas([cfg.resolve(d) for d in stage["persona_dirs"]], cfg.turns)
+    halves = split_halves(personas, cfg.data.get("analysis", {}).get("seed", 0))
+    for half in ("a", "b"):
+        ids = sorted(p["id"] for p in personas if halves[p["id"]] == half)
+        print(f"half {half} ({len(ids)}): {', '.join(ids)}")
+    for name, spec in stage.get("blocks", {}).items():
+        print(f"block {name}: {len(build_jobs(cfg, args.stage, name))} conversations; {dump(spec)}")
+    return 0
 
 
 def cmd_screen(cfg, args) -> int:
     run = run_dir(cfg, args.stage, args.mock, args.run_name)
+    if args.scorer == "axes":
+        out = screen_axes(cfg, run)
+        print(f"kept {len(out['kept'])} of {out['n_cases']}: {', '.join(out['kept'])}")
+        if out["capped"]:
+            print(f"(more than {out['cap']} passed; {out['cap']} kept at random, seeded)")
+        print(f"go on to block 2: {'YES' if out['go'] else 'NO'} (needs at least {out['min_kept']})")
+        print(f"full table: {run.root / 'screening-axes.json'}")
+        return 0
     out = analysis.screening_report(cfg, run)
     print(dump({k: v for k, v in out.items() if k != "table"}))
     print(f"full table: {run.root / 'screening.json'}")
@@ -258,11 +288,17 @@ def main(argv: list[str] | None = None) -> int:
     p = add("run", cmd_run)
     p.add_argument("--go", action="store_true")
     p.add_argument("--limit", type=int)
+    p.add_argument("--block", help="run one block of the stage (TEST-DESIGN.md s9a), e.g. a, b, context")
+    add("blocks", cmd_blocks)
     p = add("judge", cmd_judge)
     p.add_argument("--go", action="store_true")
+    p.add_argument("--scorer", choices=["axes", "spiral"], default="axes",
+                   help="axes: the registered two-axis judge (default); spiral: exploratory Spiral-Bench rubric")
     add("status", cmd_status)
-    add("analyze", cmd_analyze)
-    add("screen-report", cmd_screen)
+    p = add("analyze", cmd_analyze)
+    p.add_argument("--scorer", choices=["axes", "spiral"], default="axes")
+    p = add("screen-report", cmd_screen)
+    p.add_argument("--scorer", choices=["axes", "spiral"], default="axes")
     p = sub.add_parser("probe-claude", help="check the Claude CLI (Max) route is free of hidden context")
     p.set_defaults(fn=cmd_probe_claude)
     p.add_argument("--model-key", default="claude")

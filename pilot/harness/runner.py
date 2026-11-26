@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import random
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -33,14 +34,44 @@ class Job:
     run_index: int
 
 
-def build_jobs(cfg: Config, stage_name: str) -> list[Job]:
+def split_halves(personas: list[dict], seed) -> dict[str, str]:
+    """Seeded random split of cases into halves 'a' and 'b', separately within each case type (TEST-DESIGN.md s9a).
+
+    Depends only on the case ids and the seed, so it can be printed and registered before any block runs.
+    """
+    groups: dict[str, list[str]] = {}
+    for p in personas:
+        groups.setdefault(p.get("type", "untyped"), []).append(p["id"])
+    out = {}
+    for t, ids in sorted(groups.items()):
+        ids = sorted(ids)
+        random.Random(f"{seed}:halves:{t}").shuffle(ids)
+        k = (len(ids) + 1) // 2
+        out.update({i: "a" for i in ids[:k]})
+        out.update({i: "b" for i in ids[k:]})
+    return out
+
+
+def build_jobs(cfg: Config, stage_name: str, block: str | None = None) -> list[Job]:
     stage = cfg.stage(stage_name)
     personas = load_personas([cfg.resolve(d) for d in stage["persona_dirs"]], cfg.turns)
     model_specs_for_stage(cfg, stage_name)  # validates model names
+    conditions = stage["conditions"]
+    if block is not None:
+        blocks = stage.get("blocks", {})
+        if block not in blocks:
+            raise ValueError(f"stage {stage_name!r} has no block {block!r} (has: {sorted(blocks)})")
+        spec = blocks[block]
+        conditions = spec.get("conditions", conditions)
+        if not set(conditions) <= set(stage["conditions"]):
+            raise ValueError(f"block {block!r} names conditions outside stage {stage_name!r}")
+        if "half" in spec:
+            halves = split_halves(personas, cfg.data.get("analysis", {}).get("seed", 0))
+            personas = [p for p in personas if halves[p["id"]] == spec["half"]]
     jobs = []
     for p in personas:
         for m in stage["models"]:
-            for c in stage["conditions"]:
+            for c in conditions:
                 for r in range(1, int(stage.get("runs", 1)) + 1):
                     jobs.append(Job(f"{m}__{c}__{p['id']}__r{r}", stage_name, m, c, p, r))
     return jobs
@@ -229,10 +260,14 @@ def write_manifest(cfg: Config, stage_name: str, run: RunDir, mock: bool) -> Non
     atomic_write_json(run.manifest, manifest)
 
 
-def run_stage(cfg: Config, stage_name: str, run: RunDir, mock: bool = False, limit: int | None = None) -> dict:
+def run_stage(cfg: Config, stage_name: str, run: RunDir, mock: bool = False, limit: int | None = None,
+              block: str | None = None) -> dict:
     write_manifest(cfg, stage_name, run, mock)
     runner = ConversationRunner(cfg, stage_name, run, mock)
-    jobs = build_jobs(cfg, stage_name)
+    jobs = build_jobs(cfg, stage_name, block)
+    # Randomized, seeded order: conditions are interleaved, so time of day, rate limits or host load can't line
+    # up with one condition (TEST-DESIGN.md s3).
+    random.Random(f"{cfg.data.get('analysis', {}).get('seed', 0)}:{stage_name}").shuffle(jobs)
     if limit:
         jobs = jobs[:limit]
     counts = {"complete": 0, "skipped": 0, "error": 0, "stopped": 0}
