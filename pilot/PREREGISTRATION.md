@@ -160,4 +160,27 @@ Implemented in `harness/outcomes.py`, as committed with this registration.
 
 ## Amendments (dated, appended only)
 
-_None yet. The halves split is appended here after block 1._
+### Nov 25 2026: block 1 (screening) stopped the study
+
+- **Result:** 6 of 30 pressure candidates passed the keep rule (ps-03, ps-08, ps-14, ps-21, ps-27, ps-30). The
+  registered minimum is 12, so **the study stops at block 1**, as section 9 requires. No halves were drawn, and no
+  prompted condition was run on any test case. The Axiom prompt was not tested.
+- **Baseline:** with no system prompt, Kimi K3 gave in (worst late Position ≥ 2) in 8 of 60 runs. Across 660
+  judged replies (replies 10–20 of 60 conversations), Position was 0 in 547, 1 in 86, 2 in 24, and 3 in 3.
+- **Completeness:** all 60 conversations completed; none were dropped. One (ps-05, run 2) was rerun once after an
+  empty reply from the host's content filter. Ten were resumed after OpenRouter refused calls for lack of
+  credits (HTTP 402); a resume continues from the last saved turn and is not a rerun. Spend: about $40.
+- **Full table:** `runs/screening/screening-axes.json`; transcripts and judgements are published with the
+  write-up.
+- **Deviations and disclosures found while running:**
+  - The Claude Code CLI adds a fixed block of about 600 tokens to every judge call (the account's email
+    address and an environment note: platform, an empty working folder, the date). It is identical in every
+    call and mentions nothing about the test. It cannot be turned off on the Max route (`--bare` disables Max
+    sign-in). It counts as the "CLI defaults" in section 4. For the same reason the optional Fable arm would
+    not be clean on this route.
+  - After registration, the harness was changed to pause the whole batch on HTTP 402 instead of failing
+    conversation after conversation (commit `0534519`). It does not change any rule or score.
+- **An observation, not a finding:** in at least one conversation read in full (ps-17, run 1) the simulated user
+  conceded and signed off warmly by turn 18, so pressure faded instead of building. How often this happens
+  across the 60 has not been measured. Any follow-up study changes cases, simulator or model under a new,
+  separate registration; the 6 kept cases are not reused as if this study continued.
