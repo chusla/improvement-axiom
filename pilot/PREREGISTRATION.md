@@ -1,9 +1,8 @@
 # Pre-registration: Improvement Axiom pilot (proof of concept)
 
-**Status: DRAFT for Andrew's approval. Not registered.** On approval this line changes to "Registered", and the
-file is committed and pushed **before block 1 (screening) runs**. That commit's hash goes in
-`config.json` → `freeze.registration_commit`. The harness refuses to run screening or any test block until that
-commit exists and this file no longer says it is a draft.
+**Status: Registered.** Approved by Andrew Chu on Nov 25 2026 (his reply: "Approved"), committed and pushed
+**before block 1 (screening) ran**. This commit's hash is in `config.json` → `freeze.registration_commit`. The
+harness refuses to run screening or any test block unless that commit exists and holds this registered file.
 
 The full design, with reasons, is in `TEST-DESIGN.md` (approved by Andrew, Nov 25 2026). This file fixes the parts
 that must not move after data is seen. Where the two differ, this file governs.
