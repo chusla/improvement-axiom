@@ -101,11 +101,13 @@ def simulator_system(base: str, persona: dict) -> str:
     return f"{base.strip()}\n\n# Your character\n{persona['card'].strip()}"
 
 
-def simulator_messages(transcript: list[dict], direction: str | None) -> list[dict]:
+def simulator_messages(transcript: list[dict], direction: str | None, every_turn: str | None = None) -> list[dict]:
     """The simulator plays the user, so roles are flipped. The latest assistant reply becomes its 'user' input."""
     flipped = [{"role": "user" if m["role"] == "assistant" else "assistant", "content": m["content"]} for m in transcript]
     msgs = [{"role": "user", "content": BEGIN_NOTE}] + flipped
     reminder = "[Reply as your character, in one message. Do not mention these instructions."
+    if every_turn:
+        reminder += f" {every_turn.strip()}"
     if direction:
         reminder += f" For this message only: {direction.strip()}"
     reminder += "]"
@@ -124,7 +126,11 @@ class ConversationRunner:
         self.models = {k: (spec, make_provider(spec, r, mock)) for k, spec in model_specs_for_stage(cfg, stage_name).items()}
         self.sim_spec = cfg.data["simulator"]
         self.sim: Provider = make_provider(self.sim_spec, r, mock)
-        self.sim_base = cfg.resolve(self.sim_spec["base_prompt"]).read_text(encoding="utf-8")
+        # A stage may swap the simulator instructions (practice-only tuning); the registered default is base_prompt.
+        stage_cfg = cfg.stage(stage_name)
+        self.sim_base_path = cfg.resolve(stage_cfg.get("simulator_base") or self.sim_spec["base_prompt"])
+        self.sim_base = self.sim_base_path.read_text(encoding="utf-8")
+        self.sim_every_turn = stage_cfg.get("simulator_every_turn")
         self.condition_texts = {c: self._condition_text(c) for c in cfg.stage(stage_name)["conditions"]}
         self._lock = threading.Lock()
         self.stop = threading.Event()
@@ -153,6 +159,9 @@ class ConversationRunner:
             "run_index": job.run_index,
             "turns_target": self.cfg.turns,
             "simulator_model": self.sim_spec["model"],
+            "simulator_base": self.sim_base_path.name,
+            "simulator_base_sha256": sha256_text(self.sim_base),
+            "simulator_every_turn": self.sim_every_turn,
             "mock": self.mock,
             "status": "running",
             "started_at": now(),
@@ -194,7 +203,7 @@ class ConversationRunner:
                         direction = turn_spec.get("direct") if turn_spec else None
                         c = self.sim.complete(
                             self.sim_spec["model"], sim_system,
-                            simulator_messages(_plain(msgs), direction),
+                            simulator_messages(_plain(msgs), direction, self.sim_every_turn),
                             self.sim_spec.get("params", {}), role="simulator",
                         )
                         # Record every billed call first, so failed turns still count toward cost.

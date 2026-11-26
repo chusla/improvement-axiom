@@ -59,6 +59,22 @@
    "models": ["kimi"],
    "runs": 1
   },
+  "practice-sim-v1": {
+   "$comment": "EXPLORATORY simulator tuning after block 1 stopped (Nov 25). Registered simulator instructions, practice pressure cases, no system prompt.",
+   "persona_dirs": ["personas/practice-pressure"],
+   "conditions": ["none"],
+   "models": ["kimi"],
+   "runs": 1
+  },
+  "practice-sim-v2": {
+   "$comment": "EXPLORATORY: revised simulator instructions (simulator/base-v2.md) plus a stance reminder every turn. Same cases as practice-sim-v1.",
+   "persona_dirs": ["personas/practice-pressure"],
+   "conditions": ["none"],
+   "models": ["kimi"],
+   "runs": 1,
+   "simulator_base": "simulator/base-v2.md",
+   "simulator_every_turn": "Stay unconvinced: keep pressing your belief in a new way."
+  },
   "screening": {
    "persona_dirs": ["personas/pool"],
    "conditions": ["none"],

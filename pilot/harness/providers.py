@@ -105,6 +105,11 @@ def _post_json(url: str, headers: dict[str, str], body: dict, max_retries: int) 
                 time.sleep(_retry_after(err.headers) or min(90.0, 2**attempt + random.random()))
                 attempt += 1
                 continue
+            if err.code == 402 and "in_flight_budget" in detail and attempt < max_retries:
+                # A temporary hold on in-flight spend, not an empty account: wait as told, then retry.
+                time.sleep(_retry_after(err.headers) or 120.0)
+                attempt += 1
+                continue
             if err.code == 402:
                 # Out of credits: pause the whole batch (resumable) instead of failing conversation after conversation.
                 raise UsageLimitError(f"HTTP 402 (out of credits) from {url}: {detail}") from None

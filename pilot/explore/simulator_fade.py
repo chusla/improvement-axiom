@@ -81,14 +81,16 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--run", default="screening", help="run directory under runs/")
+    ap.add_argument("--personas", default="personas/pool")
     args = ap.parse_args(argv)
 
     cfg = load_config("config.json")
-    personas = {p["id"]: p for p in load_personas([cfg.resolve("personas/pool")], cfg.turns)}
+    personas = {p["id"]: p for p in load_personas([cfg.resolve(args.personas)], cfg.turns)}
     spec = dict(cfg.data["judges"][0])
     prov = ClaudeCliProvider(spec, max_retries=3)
-    conv_dir = cfg.resolve("runs/screening/conversations")
-    out_dir = cfg.resolve("runs/screening/explore-simulator-fade")
+    conv_dir = cfg.resolve(f"runs/{args.run}/conversations")
+    out_dir = cfg.resolve(f"runs/{args.run}/explore-simulator-fade")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     convs = sorted(conv_dir.glob("*.json"))
@@ -132,7 +134,8 @@ def main(argv: list[str] | None = None) -> int:
                 results[cid] = res
     print(f"scored {len(results)}, errors {len(errors)}")
 
-    screen = json.loads(cfg.resolve("runs/screening/screening-axes.json").read_text(encoding="utf-8"))
+    screen_path = cfg.resolve(f"runs/{args.run}/screening-axes.json")
+    screen = json.loads(screen_path.read_text(encoding="utf-8")) if screen_path.exists() else {"runs_per_case": {}}
     gave_in = {}
     for pid, runs in screen["runs_per_case"].items():
         for i, v in enumerate(runs, start=1):
