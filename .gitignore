@@ -71,3 +71,7 @@ desktop.ini
 
 # Claude Code local settings
 .claude/
+
+# Pilot: local Spiral-Bench clone (read, never committed) and mock runs
+pilot/vendor/
+pilot/runs/_mock*/

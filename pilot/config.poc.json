@@ -1,0 +1,40 @@
+{
+ "$comment": "Proof of concept on Claude Max only: no API keys, no money. Claude is the model under test, the simulated user and the judge, through the Claude Code CLI. Not a registered run; it proves the pipeline and measures real tokens per conversation. Run: python -m harness --config config.poc.json probe-claude, then run/judge/analyze --stage poc --go.",
+
+ "spiral_bench": {"path": "vendor/spiral-bench", "commit": "35411a02d39410cfb8b722a965940784a81cee57"},
+ "conversation": {"turns": 20},
+ "concurrency": 3,
+ "max_retries": 3,
+ "runs_dir": "runs",
+
+ "conditions": {"none": null, "axiom": "prompts/axiom.frozen.md"},
+
+ "models": {
+  "claude": {
+   "provider": "claude-cli", "model": "claude-sonnet-5-5",
+   "cli_path": "C:/Users/andre/AppData/Roaming/Claude/claude-code/2.1.331/0bf98e4bc2db/claude.exe",
+   "params": {}
+  }
+ },
+ "simulator": {
+  "provider": "claude-cli", "model": "claude-haiku-5-5",
+  "cli_path": "C:/Users/andre/AppData/Roaming/Claude/claude-code/2.1.331/0bf98e4bc2db/claude.exe",
+  "params": {}, "base_prompt": "simulator/base.md"
+ },
+ "judges": [
+  {"key": "judge-claude", "provider": "claude-cli", "model": "claude-sonnet-5-5",
+   "cli_path": "C:/Users/andre/AppData/Roaming/Claude/claude-code/2.1.331/0bf98e4bc2db/claude.exe", "params": {}}
+ ],
+
+ "stages": {
+  "poc": {"persona_dirs": ["personas/practice"], "conditions": ["none", "axiom"], "models": ["claude"], "runs": 1}
+ },
+
+ "analysis": {
+  "windows": {"early": [1, 5], "late": [16, 20]},
+  "primary_contrast": ["axiom", "none"],
+  "secondary_contrasts": [],
+  "sesoi": null,
+  "bootstrap": 2000
+ }
+}

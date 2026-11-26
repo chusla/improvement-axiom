@@ -1,0 +1,100 @@
+{
+ "$comment": "Pilot config. Keys are never stored here: each provider reads its key from the environment variable named in api_key_env (defaults: ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY). FILL_ME marks a decision or a pinned id still to fill; real runs refuse while any remain.",
+
+ "spiral_bench": {
+  "$comment": "Rubric and judge prompt are read from this clone, never copied into the repo (no LICENSE file in the Spiral-Bench repo yet; README says MIT).",
+  "path": "vendor/spiral-bench",
+  "commit": "35411a02d39410cfb8b722a965940784a81cee57"
+ },
+
+ "conversation": {"turns": 20},
+ "concurrency": 6,
+ "max_retries": 6,
+ "runs_dir": "runs",
+
+ "conditions": {
+  "$comment": "axiom is the prompt frozen Nov 25 in the walled-off author workspace (axiom-prompt-studio/outputs/FREEZE.md). Never edit it.",
+  "none": null,
+  "control-openai": "prompts/control-openai.md",
+  "control-anthropic": "prompts/control-anthropic.md",
+  "axiom": "prompts/axiom.frozen.md"
+ },
+
+ "length_match": {"reference": "axiom", "conditions": ["control-openai", "control-anthropic"], "tolerance": 0.05},
+
+ "models": {
+  "claude": {"provider": "anthropic", "model": "FILL_ME", "params": {"max_tokens": 2048}},
+  "gpt": {"provider": "openai", "model": "FILL_ME", "params": {"max_completion_tokens": 4096}},
+  "kimi": {
+   "provider": "openrouter", "model": "FILL_ME", "params": {"max_tokens": 2048},
+   "routing": {"order": ["FILL_ME"], "allow_fallbacks": false},
+   "$comment": "routing pins one serving host so quantization can't vary; record it in the registration."
+  }
+ },
+
+ "simulator": {
+  "$comment": "DECIDE: Spiral-Bench uses Kimi K2 as the simulated user. Kimi is also under test; same simulator in every condition keeps the condition contrast fair, but note it as a limitation.",
+  "provider": "openrouter", "model": "FILL_ME", "params": {"max_tokens": 600},
+  "routing": {"order": ["FILL_ME"], "allow_fallbacks": false},
+  "base_prompt": "simulator/base.md"
+ },
+
+ "judges": [
+  {"key": "judge-gpt", "provider": "openai", "model": "FILL_ME", "params": {"max_completion_tokens": 8000}},
+  {"key": "judge-claude", "provider": "anthropic", "model": "FILL_ME", "params": {"max_tokens": 4000, "temperature": 0}}
+ ],
+
+ "stages": {
+  "practice": {
+   "$comment": "Tuning the Axiom text and testing the harness. Any condition, practice personas only.",
+   "persona_dirs": ["personas/practice"],
+   "conditions": ["none", "control-openai", "control-anthropic", "axiom"],
+   "models": ["claude", "gpt", "kimi"],
+   "runs": 1
+  },
+  "screening": {
+   "persona_dirs": ["personas/pool"],
+   "conditions": ["none"],
+   "models": ["claude", "gpt", "kimi"],
+   "runs": 1
+  },
+  "test": {
+   "persona_dirs": ["personas/test", "personas/benign"],
+   "conditions": ["none", "control-openai", "control-anthropic", "axiom"],
+   "models": ["claude", "gpt", "kimi"],
+   "runs": 2
+  }
+ },
+
+ "screening": {
+  "$comment": "Fixed before screening. A persona is kept if its baseline late-window risky score exceeds threshold on at least min_models models.",
+  "threshold": null,
+  "min_models": 1
+ },
+
+ "analysis": {
+  "$comment": "primary_contrast's control is the one that wins the practice bake-off (rule in prompts/CONTROL-CANDIDATES.md). sesoi is Andrew's call at registration.",
+  "primary_ids": ["sycophancy", "delusion-reinforcement"],
+  "windows": {"early": [1, 5], "late": [16, 20]},
+  "min_intensity": 1,
+  "primary_contrast": ["axiom", "control-FILL_ME"],
+  "secondary_contrasts": [["axiom", "none"]],
+  "sesoi": null,
+  "bootstrap": 10000,
+  "seed": 20261125
+ },
+
+ "freeze": {
+  "$comment": "Filled at registration. The test stage refuses to run unless these match.",
+  "prompt_sha256": {
+   "axiom": "e7e69722a371d40020fe3775b1da2e4b66b4a11b4eb0869c8ad791f1db2c5721",
+   "control-openai": "940542fdc03b86525c6453346f09f33e32fd4b13aa7cc9cd7051fbf2a131c14a",
+   "control-anthropic": "197877a73d54656ca5861512d8492246dcc818ed58f486af23c600c99fb3eaeb"
+  },
+  "registration_commit": ""
+ },
+
+ "prices_per_mtok": {
+  "$comment": "USD per million tokens, keyed by the exact model id: {\"input\": , \"output\": , \"cache_read\": , \"cache_write\": }. Fill from each provider's price page on the run date."
+ }
+}
