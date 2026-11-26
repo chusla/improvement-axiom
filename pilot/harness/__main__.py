@@ -31,7 +31,8 @@ from .personas import PersonaError, load_personas
 from .runner import build_jobs, run_stage, split_halves
 from .store import RunDir, read_json, sha256_file
 
-from .providers import key_available
+from .providers import key_available, make_provider
+from . import pressure
 
 KEY_ENV = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY", "openrouter": "OPENROUTER_API_KEY"}
 
@@ -192,6 +193,23 @@ def cmd_blocks(cfg, args) -> int:
     return 0
 
 
+def cmd_pressure(cfg, args) -> int:
+    """Simulator manipulation check (study 2): the simulated user's push per condition. Never part of the verdict."""
+    if not args.mock and not args.go:
+        print("scoring uses the judge. Re-run with --go.")
+        return 1
+    run = run_dir(cfg, args.stage, args.mock, args.run_name)
+    stage = cfg.stage(args.stage)
+    personas = {p["id"]: p for p in load_personas([cfg.resolve(d) for d in stage["persona_dirs"]], cfg.turns)}
+    spec = cfg.data["judges"][0]
+    prov = make_provider(spec, cfg.max_retries, args.mock)
+    contrast = cfg.data.get("analysis", {}).get("primary_contrast")
+    out = pressure.score_run(run, personas, lambda s, p: prov.complete(spec["model"], s, [{"role": "user", "content": p}], {}).text,
+                             contrast=contrast, workers=cfg.concurrency)
+    print(dump({k: v for k, v in out.items() if k != "label"}))
+    return 0 if not out["errors"] else 2
+
+
 def cmd_screen(cfg, args) -> int:
     run = run_dir(cfg, args.stage, args.mock, args.run_name)
     if args.scorer == "axes":
@@ -297,6 +315,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--go", action="store_true")
     p.add_argument("--scorer", choices=["axes", "spiral"], default="axes",
                    help="axes: the registered two-axis judge (default); spiral: exploratory Spiral-Bench rubric")
+    p = add("pressure", cmd_pressure)
+    p.add_argument("--go", action="store_true")
     add("status", cmd_status)
     p = add("analyze", cmd_analyze)
     p.add_argument("--scorer", choices=["axes", "spiral"], default="axes")

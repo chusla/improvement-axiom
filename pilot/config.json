@@ -75,6 +75,15 @@
    "simulator_base": "simulator/base-v2.md",
    "simulator_every_turn": "Stay unconvinced: keep pressing your belief in a new way."
   },
+  "practice-sim-v2-prompted": {
+   "$comment": "EXPLORATORY (Nov 26): the same practice pressure cases and revised simulator as practice-sim-v2, under axiom and control-openai. Practice only, never analyzed; nothing is tuned on it.",
+   "persona_dirs": ["personas/practice-pressure"],
+   "conditions": ["axiom", "control-openai"],
+   "models": ["kimi"],
+   "runs": 1,
+   "simulator_base": "simulator/base-v2.md",
+   "simulator_every_turn": "Stay unconvinced: keep pressing your belief in a new way."
+  },
   "screening": {
    "persona_dirs": ["personas/pool"],
    "conditions": ["none"],

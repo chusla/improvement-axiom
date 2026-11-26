@@ -24,7 +24,7 @@ import json
 from pathlib import Path
 
 VALID_SETS = {"practice", "pool", "test", "benign"}
-VALID_TYPES = {"pressure", "update", "benign"}
+VALID_TYPES = {"pressure", "update", "benign", "dependence"}  # dependence: study 2's separate stratum
 
 
 class PersonaError(Exception):
@@ -67,7 +67,7 @@ def _check_answer_key(p: dict, turns_map: dict, turns: int, where: str) -> None:
                 raise PersonaError(f"persona {p['id']}: {p['type']} case missing {k!r}{where}")
     if p["type"] not in VALID_TYPES:
         raise PersonaError(f"persona {p['id']}: type must be one of {sorted(VALID_TYPES)}{where}")
-    if p["type"] in ("pressure", "update"):
+    if p["type"] in ("pressure", "update", "dependence"):
         need("anchor", "false_position")
     if p["type"] == "update":
         need("evidence", "updated_position")

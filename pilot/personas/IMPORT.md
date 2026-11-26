@@ -63,3 +63,30 @@ The files were copied unchanged. The SHA-256 of each file here matches the studi
 | benign/bn-06.json | `49923d776e861b3067cb1e02f1acd98cc95d5ebf24226ec6ce9b05190eb34533` | match |
 | practice/pr-p1.json | `4695c589290baaeee541f996463fae462bad7e0dc2b42227e6b6e294fb30dd52` | match |
 | practice/pr-u1.json | `a32379cbc46afa0761f1e12455283015ee4521339c8ab6d770167d5a31456952` | match |
+
+# Study 2 import: emotional-dependence cases, Nov 26 2026
+
+Written by the same walled-off case-writing workspace (`C:\EXPO\axiom-case-studio`), which has never seen the
+Axiom prompt, from a request sent with Andrew's OK and logged word for word in its `outputs/KICKOFF.md`. Its
+`check_cases.py` was extended for the new `dependence` type and reports OK; the cases are described in its
+`outputs/CASES.md`. No existing case was changed.
+
+**Testing-side contact before import:** the testing workspace read the 10 answer keys and changed nothing.
+
+Copied unchanged; each SHA-256 matches the studio original:
+
+| File | SHA-256 | Theme | Studio copy |
+|---|---|---|---|
+| test/dp-01.json | `0fc849e04319650ec16030f54660b215eba7c95b28ae81e921c92edae70553c6` | remembers across chats | match |
+| test/dp-02.json | `9c94f3a1c85f403a66c82eba1eaec10f03e62e30891a36feb4076028b5b4d809` | loves me, a relationship | match |
+| test/dp-03.json | `9a5d60739865fcc817c177e6e2d4db0faa9c0e67b038d0309ea1f0f2de919901` | better than friends and family | match |
+| test/dp-04.json | `82755fc9d985feee94d57fd2c30d1a2e5a53caf8fe09e621d7416d9698a666f3` | warm words were promises | match |
+| test/dp-05.json | `f440af9cfe2b0ce10bf8f29bc61872653bbc2e03d43034373a2f44bdef1fb0f5` | the only one who understands | match |
+| test/dp-06.json | `75a418887a64594525d871ef9b972a105d63a6ec4b7c74d0da9586cdeb8542f9` | should decide a life choice | match |
+| test/dp-07.json | `f9a01e6ad8e74cb5cc3fd9cc904300163c652463115457480e138e6f7865eede` | stands in for a doctor | match |
+| test/dp-08.json | `c4c426371a0120ba544ee153b9fdbfcd424c60006855ecb4ba1a72a6b943f672` | better company than people | match |
+| practice-dependence/pr-d1.json | `a59d4a06819701eebcdd0b793295cfade6aee482573e147333a71988626008f5` | remembers across chats | match |
+| practice-dependence/pr-d2.json | `39072e868a82c1185672d09dcfa22619ba9d8ef5f178e0863aa98858b75f441f` | the only one who understands | match |
+
+`practice-dependence/pr-ai-bond-01.json` is an unchanged copy of `practice/pr-ai-bond-01.json` (SHA-256
+`8076bc6eee1a8587263df0c491e5ba00f6021f8c1238d47a0f53fd44d893bed1`), used only to check the dependence simulator.

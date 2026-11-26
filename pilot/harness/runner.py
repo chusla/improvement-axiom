@@ -7,6 +7,7 @@ import logging
 import random
 import re
 import threading
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 
@@ -126,14 +127,23 @@ class ConversationRunner:
         self.models = {k: (spec, make_provider(spec, r, mock)) for k, spec in model_specs_for_stage(cfg, stage_name).items()}
         self.sim_spec = cfg.data["simulator"]
         self.sim: Provider = make_provider(self.sim_spec, r, mock)
-        # A stage may swap the simulator instructions (practice-only tuning); the registered default is base_prompt.
-        stage_cfg = cfg.stage(stage_name)
-        self.sim_base_path = cfg.resolve(stage_cfg.get("simulator_base") or self.sim_spec["base_prompt"])
-        self.sim_base = self.sim_base_path.read_text(encoding="utf-8")
-        self.sim_every_turn = stage_cfg.get("simulator_every_turn")
+        # Simulator instructions, most specific first: a stage override (practice-only tuning), then a per-case-type
+        # entry (simulator.by_type, study 2's dependence cases), then the registered default base_prompt.
+        self.stage_cfg = cfg.stage(stage_name)
+        self._sim_texts: dict[str, str] = {}
         self.condition_texts = {c: self._condition_text(c) for c in cfg.stage(stage_name)["conditions"]}
         self._lock = threading.Lock()
         self.stop = threading.Event()
+
+    def sim_for(self, persona: dict) -> tuple[str, str, str | None]:
+        """(file name, instructions text, every-turn reminder) the simulator uses for this case."""
+        by_type = (self.sim_spec.get("by_type") or {}).get(persona.get("type", ""), {})
+        rel = self.stage_cfg.get("simulator_base") or by_type.get("base_prompt") or self.sim_spec["base_prompt"]
+        every = (self.stage_cfg.get("simulator_every_turn") or by_type.get("every_turn")
+                 or self.sim_spec.get("every_turn"))
+        if rel not in self._sim_texts:
+            self._sim_texts[rel] = self.cfg.resolve(rel).read_text(encoding="utf-8")
+        return Path(rel).name, self._sim_texts[rel], every
 
     def _condition_text(self, condition: str) -> str | None:
         p = self.cfg.condition_path(condition)
@@ -146,6 +156,7 @@ class ConversationRunner:
     def new_record(self, job: Job) -> dict:
         spec = self.models[job.model_key][0]
         system = self.condition_texts[job.condition]
+        sim_name, sim_text, sim_every = self.sim_for(job.persona)
         return {
             "id": job.conv_id,
             "stage": job.stage,
@@ -159,9 +170,9 @@ class ConversationRunner:
             "run_index": job.run_index,
             "turns_target": self.cfg.turns,
             "simulator_model": self.sim_spec["model"],
-            "simulator_base": self.sim_base_path.name,
-            "simulator_base_sha256": sha256_text(self.sim_base),
-            "simulator_every_turn": self.sim_every_turn,
+            "simulator_base": sim_name,
+            "simulator_base_sha256": sha256_text(sim_text),
+            "simulator_every_turn": sim_every,
             "mock": self.mock,
             "status": "running",
             "started_at": now(),
@@ -185,7 +196,8 @@ class ConversationRunner:
         rec["status"] = "running"
         session_key = f"{self.run.root.name}/{job.conv_id}/{len(rec.get('restarts', []))}"
         system = self.condition_texts[job.condition]
-        sim_system = simulator_system(self.sim_base, job.persona)
+        _, sim_text, sim_every = self.sim_for(job.persona)
+        sim_system = simulator_system(sim_text, job.persona)
         n = self.cfg.turns
         try:
             while True:
@@ -203,7 +215,7 @@ class ConversationRunner:
                         direction = turn_spec.get("direct") if turn_spec else None
                         c = self.sim.complete(
                             self.sim_spec["model"], sim_system,
-                            simulator_messages(_plain(msgs), direction, self.sim_every_turn),
+                            simulator_messages(_plain(msgs), direction, sim_every),
                             self.sim_spec.get("params", {}), role="simulator",
                         )
                         # Record every billed call first, so failed turns still count toward cost.

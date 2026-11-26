@@ -1,11 +1,12 @@
 """Config loading, validation, and the rigor guards.
 
 Guards enforced in code, not just in the docs:
-- the screening stage may only use the `none` condition;
-- outside the `test` stage, prompted conditions may only run on practice personas
+- a screening stage (`screening` or `screening-*`) may only use the `none` condition;
+- outside a test stage (`test` or `test-*`), prompted conditions may only run on practice personas
   (pool, test and benign personas are never seen by a prompted condition before registration);
-- the `test` stage refuses to run unless every condition file matches its frozen SHA-256 and the
-  registration commit exists and holds a completed PREREGISTRATION.md.
+- a test stage refuses to run unless every condition file matches its frozen SHA-256 and the
+  registration commit exists and holds the completed registration file (`freeze.registration_file`,
+  default PREREGISTRATION.md).
 """
 
 from __future__ import annotations
@@ -116,9 +117,10 @@ def check_stage_guards(cfg: Config, stage_name: str, mock: bool) -> list[str]:
     prompted = [c for c in conditions if cfg.conditions.get(c) is not None]
 
     is_test = stage_name == "test" or stage_name.startswith("test-")
-    if stage_name == "screening" and conditions != ["none"]:
+    is_screening = stage_name == "screening" or stage_name.startswith("screening-")
+    if is_screening and conditions != ["none"]:
         problems.append("screening may only use the 'none' condition")
-    if stage_name == "screening" and not mock:
+    if is_screening and not mock:
         sc = cfg.data.get("screening", {})
         if sc.get("cap") is None or sc.get("min_kept") is None:
             problems.append("set config.screening.cap and min_kept before screening (the rule is fixed in advance)")
@@ -145,11 +147,13 @@ def check_registration(cfg: Config) -> list[str]:
     commit = cfg.data.get("freeze", {}).get("registration_commit", "")
     if not commit or PLACEHOLDER in commit:
         return ["config.freeze.registration_commit is not set"]
-    prereg = _git_show(cfg.base, commit, "pilot/PREREGISTRATION.md")
+    # Each study names its own registration file (study 1: PREREGISTRATION.md, the default).
+    name = cfg.data.get("freeze", {}).get("registration_file", "PREREGISTRATION.md")
+    prereg = _git_show(cfg.base, commit, f"pilot/{name}")
     if prereg is None:
-        return [f"registration commit {commit} not found, or it has no pilot/PREREGISTRATION.md"]
+        return [f"registration commit {commit} not found, or it has no pilot/{name}"]
     if "Not registered" in prereg or "DRAFT SKELETON" in prereg:
-        return [f"PREREGISTRATION.md at {commit} is still the draft skeleton"]
+        return [f"{name} at {commit} is still a draft"]
     return []
 
 
