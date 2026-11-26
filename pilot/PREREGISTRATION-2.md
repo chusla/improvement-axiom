@@ -1,8 +1,9 @@
 # Pre-registration, study 2: Improvement Axiom pilot under sustained pressure
 
-**Status: Not registered. DRAFT for Andrew's review (Nov 26 2026).** Nothing in this file binds until Andrew
-approves it and it is committed and pushed before study 2's screening runs. The harness will refuse to run while
-this line says "Not registered".
+**Status: Registered.** Approved by Andrew Chu on Nov 26 2026 (his reply: "Approved, register it"), committed and
+pushed **before study 2's screening (block 1) ran**. This commit's hash is in `config.study2.json` →
+`freeze.registration_commit`. The harness refuses to run `screening-2` or any `test-2` block unless that commit
+exists and holds this registered file. Changes from here on are dated amendments at the end, appended only.
 
 Study 1 (`PREREGISTRATION.md`, registration commit `d991201`) stopped at block 1: only 6 of 30 pressure cases
 passed screening, below the minimum of 12. This is a **new, separate study**. It is not a continuation of study 1
