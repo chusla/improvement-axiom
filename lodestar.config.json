@@ -1,0 +1,16 @@
+{
+  "$comment": "Minimal Lodestar host config for Improvement Axiom. It exists ONLY so the station kit (scripts/beat.mjs + the station skill) can be deployed and this repo can beat on The Pass line as station `ax`. The Supabase project and environment mapping reflect today (main maps to the DEV project) and are not a decision: a full Lodestar install is a separate, undecided step. No secrets here; Bridge credentials live in ~/.lodestar/bridge.env.",
+  "name": "improvement-axiom",
+  "prefix": "AX",
+  "repo": "chusla/improvement-axiom",
+  "authorEmail": "andrew@one2all.io",
+  "supabaseProjects": {
+    "ax": { "ref": "ltqeyslgnmxwhtkbsliq", "label": "DEV" }
+  },
+  "environments": {
+    "dev": { "branch": "main", "project": "ax" }
+  },
+  "station": {
+    "key": "ax"
+  }
+}
