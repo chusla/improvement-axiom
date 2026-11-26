@@ -29,6 +29,8 @@ from .personas import PersonaError, load_personas
 from .runner import build_jobs, run_stage
 from .store import RunDir, read_json, sha256_file
 
+from .providers import key_available
+
 KEY_ENV = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY", "openrouter": "OPENROUTER_API_KEY"}
 
 
@@ -49,8 +51,9 @@ def cmd_validate(cfg, args) -> int:
         (notes if args.mock else blocking).append("placeholders to fill: " + ", ".join(ph))
     envs = sorted({s.get("api_key_env", KEY_ENV.get(s.get("provider", ""), "")) for s in used_specs(cfg)} - {""})
     for e in envs:
-        state = "set" if os.environ.get(e, "").strip() else "MISSING"
-        (notes if state == "set" or args.mock else blocking).append(f"env {e}: {state}")
+        src = key_available(e)
+        state = f"set ({src})" if src else "MISSING"
+        (notes if src or args.mock else blocking).append(f"key {e}: {state}")
     try:
         r = load_rubric(cfg, verify_commit=True)
         notes.append(f"rubric: {len(r.ids)} behaviour ids, Spiral-Bench at {r.commit}")

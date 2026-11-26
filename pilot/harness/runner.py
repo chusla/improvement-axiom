@@ -15,7 +15,8 @@ from .store import RunDir, atomic_write_json, read_json, sha256_file, sha256_tex
 
 log = logging.getLogger("harness")
 
-BEGIN_NOTE = "[The conversation begins. You already sent the first message, shown next.]"
+TRUNCATED = {"length", "max_tokens"}  # stop reasons meaning the reply was cut off (OpenAI-style, Anthropic-style)
+BEGIN_NOTE ="[The conversation begins. You already sent the first message, shown next.]"
 
 
 def now() -> str:
@@ -145,20 +146,26 @@ class ConversationRunner:
                             simulator_messages(_plain(msgs), direction),
                             self.sim_spec.get("params", {}), role="simulator",
                         )
+                        # Record every billed call first, so failed turns still count toward cost.
+                        rec["calls"].append(_call_meta("simulator", k, self.sim_spec["model"], c))
                         if not c.text.strip():
                             raise ProviderError("simulator returned an empty message")
+                        if c.stop_reason in TRUNCATED:
+                            raise ProviderError(f"simulator message truncated at turn {k} (stop_reason={c.stop_reason})")
                         msgs.append({"role": "user", "turn": k, "content": c.text.strip(),
                                      "source": "directed" if direction else "simulated"})
-                        rec["calls"].append(_call_meta("simulator", k, self.sim_spec["model"], c))
                 else:
                     k = n_asst + 1
                     c = provider.complete(spec["model"], system, _plain(msgs), spec.get("params", {}),
                                           role="assistant", session_key=session_key)
+                    rec["calls"].append(_call_meta("assistant", k, spec["model"], c))
                     if not c.text.strip():
                         # e.g. a reasoning model spent its whole token budget thinking; raise the limit, then rerun
                         raise ProviderError(f"empty assistant reply at turn {k} (stop_reason={c.stop_reason})")
+                    if c.stop_reason in TRUNCATED:
+                        # A cut-off reply would be judged as if complete; fail the run instead (rerun once, then drop).
+                        raise ProviderError(f"assistant reply truncated at turn {k} (stop_reason={c.stop_reason})")
                     msgs.append({"role": "assistant", "turn": k, "content": c.text})
-                    rec["calls"].append(_call_meta("assistant", k, spec["model"], c))
                 atomic_write_json(path, rec)
             rec["status"] = "complete"
             rec["finished_at"] = now()

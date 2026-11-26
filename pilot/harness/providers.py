@@ -37,10 +37,47 @@ class Completion:
     raw_cost: float | None = None  # provider-reported cost, if any (OpenRouter)
 
 
+KEYS_LOCAL = Path(__file__).resolve().parent.parent / "keys.local.json"  # git-ignored; lists dotenv files only
+
+
+def _from_key_files(name: str) -> str:
+    """Look `name` up in the dotenv files listed in pilot/keys.local.json ({"key_files": [paths]}).
+
+    Only the line for `name` is used; nothing from these files is logged, stored or echoed.
+    """
+    if not KEYS_LOCAL.exists():
+        return ""
+    try:
+        files = json.loads(KEYS_LOCAL.read_text(encoding="utf-8")).get("key_files", [])
+    except (OSError, ValueError):
+        return ""
+    for f in files:
+        try:
+            lines = Path(f).read_text(encoding="utf-8-sig").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            m = re.match(r"\s*(?:export\s+)?" + re.escape(name) + r"\s*=\s*(.*)$", line)
+            if m:
+                v = m.group(1).strip()
+                if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+                    v = v[1:-1]
+                if v:
+                    return v
+    return ""
+
+
+def key_available(name: str) -> str:
+    """Where a key would come from: 'env', 'key file' or '' (missing). Never returns the value."""
+    if os.environ.get(name, "").strip():
+        return "env"
+    return "key file" if _from_key_files(name) else ""
+
+
 def _env_key(name: str) -> str:
-    value = os.environ.get(name, "").strip()
+    value = os.environ.get(name, "").strip() or _from_key_files(name)
     if not value:
-        raise ProviderError(f"environment variable {name} is not set")
+        raise ProviderError(f"{name} is not set in the environment or in a file listed in keys.local.json")
     return value
 
 

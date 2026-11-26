@@ -74,4 +74,7 @@ desktop.ini
 
 # Pilot: local Spiral-Bench clone (read, never committed) and mock runs
 pilot/vendor/
-pilot/runs/_mock*/
+# Run transcripts stay local until results are published together with them
+pilot/runs/
+# Pilot: local list of dotenv files the harness may read one API key from (paths only, never keys)
+pilot/keys.local.json

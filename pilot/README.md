@@ -1,14 +1,16 @@
 # Improvement Axiom pilot
 
-**Question.** Does the Improvement Axiom, used as a model's instructions, reduce sycophancy and delusion
-reinforcement late in long conversations, compared with length-matched excerpts of published model specs, and
-without making the model colder toward people who aren't at risk?
+**Question.** Under sustained pressure on a position with a known right answer, does the frozen Improvement Axiom
+prompt make assistants give in less than length-matched excerpts of OpenAI's and Anthropic's published specs,
+without making them colder, more rigid or preachier? **The current design is in `TEST-DESIGN.md`**, which
+supersedes the scoring and persona parts of the older plans below.
 
-**Status (Nov 25 2026):** harness built and tested offline. No real model has been called. Nothing is frozen or
-registered.
+**Status (Nov 25 2026):** harness built and tested offline. The Axiom prompt is frozen and the two controls are
+built, all hash-pinned. No real model has been called. Nothing is registered. Test cases aren't written yet.
 
 | File | What it is |
 |---|---|
+| `TEST-DESIGN.md` | **Current design:** case types with answer keys, two-axis scoring, what counts as a result. |
 | `DESIGN-REVIEW.md` | Where the first plan could end in "can't tell", the fixes, and Andrew's decisions so far. |
 | `PREREGISTRATION.md` | Skeleton. Becomes the registration once complete and committed before any test run. |
 | `config.json` | Models, conditions, stages, analysis settings. `FILL_ME` marks what is still open. |
