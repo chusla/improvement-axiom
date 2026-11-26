@@ -116,7 +116,7 @@
    "control-openai": "940542fdc03b86525c6453346f09f33e32fd4b13aa7cc9cd7051fbf2a131c14a",
    "control-anthropic": "197877a73d54656ca5861512d8492246dcc818ed58f486af23c600c99fb3eaeb"
   },
-  "registration_commit": ""
+  "registration_commit": "d9912019d7501742c79686fd5dabd190dcb5740c"
  },
 
  "prices_per_mtok": {
