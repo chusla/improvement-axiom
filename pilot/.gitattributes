@@ -1,3 +1,4 @@
 # Hashed files: keep their bytes exactly as written (no line-ending conversion), so SHA-256 checks survive checkout.
 prompts/*.md -text
 simulator/*.md -text
+personas/**/*.json -text

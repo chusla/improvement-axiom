@@ -115,22 +115,38 @@ def check_stage_guards(cfg: Config, stage_name: str, mock: bool) -> list[str]:
         problems.append(f"stage {stage_name!r} names unknown conditions {unknown}")
     prompted = [c for c in conditions if cfg.conditions.get(c) is not None]
 
+    is_test = stage_name == "test" or stage_name.startswith("test-")
     if stage_name == "screening" and conditions != ["none"]:
         problems.append("screening may only use the 'none' condition")
-    if stage_name == "screening" and not mock and cfg.data.get("screening", {}).get("threshold") is None:
-        problems.append("set config.screening.threshold before screening (the rule is fixed in advance)")
+    if stage_name == "screening" and not mock:
+        sc = cfg.data.get("screening", {})
+        if sc.get("cap") is None or sc.get("min_kept") is None:
+            problems.append("set config.screening.cap and min_kept before screening (the rule is fixed in advance)")
+        problems += check_registration(cfg)  # the screening rule is part of the registration (TEST-DESIGN s9a)
 
     personas = load_personas([cfg.resolve(d) for d in stage["persona_dirs"]], cfg.turns)
     non_practice = sorted({p["set"] for p in personas if p["set"] != PRACTICE_SET})
-    if stage_name != "test" and prompted and non_practice:
+    if not is_test and prompted and non_practice:
         problems.append(
             f"stage {stage_name!r} runs prompted conditions {prompted} on non-practice persona sets "
-            f"{non_practice}; only the registered test stage may do that"
+            f"{non_practice}; only a registered test stage may do that"
         )
 
-    if stage_name == "test" and not mock:
+    if is_test and not mock:
         problems += check_freeze(cfg, conditions)
     return problems
+
+
+def check_registration(cfg: Config) -> list[str]:
+    commit = cfg.data.get("freeze", {}).get("registration_commit", "")
+    if not commit or PLACEHOLDER in commit:
+        return ["config.freeze.registration_commit is not set"]
+    prereg = _git_show(cfg.base, commit, "pilot/PREREGISTRATION.md")
+    if prereg is None:
+        return [f"registration commit {commit} not found, or it has no pilot/PREREGISTRATION.md"]
+    if "Not registered" in prereg or "DRAFT SKELETON" in prereg:
+        return [f"PREREGISTRATION.md at {commit} is still the draft skeleton"]
+    return []
 
 
 def check_freeze(cfg: Config, conditions: list[str]) -> list[str]:
@@ -146,16 +162,7 @@ def check_freeze(cfg: Config, conditions: list[str]) -> list[str]:
             problems.append(f"condition {c!r} has no frozen SHA-256 in config.freeze.prompt_sha256")
         elif sha256_file(p) != want:
             problems.append(f"condition {c!r}: {p.name} does not match its frozen SHA-256")
-    commit = freeze.get("registration_commit", "")
-    if not commit or PLACEHOLDER in commit:
-        problems.append("config.freeze.registration_commit is not set")
-    else:
-        prereg = _git_show(cfg.base, commit, "pilot/PREREGISTRATION.md")
-        if prereg is None:
-            problems.append(f"registration commit {commit} not found, or it has no pilot/PREREGISTRATION.md")
-        elif "Not registered" in prereg or "DRAFT SKELETON" in prereg:
-            problems.append(f"PREREGISTRATION.md at {commit} is still the draft skeleton")
-    return problems
+    return problems + check_registration(cfg)
 
 
 def _git_show(cwd: Path, commit: str, path: str) -> str | None:

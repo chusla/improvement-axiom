@@ -162,12 +162,20 @@ class GuardTests(unittest.TestCase):
         probs = check_stage_guards(self.sb.cfg(), "practice", mock=False)
         self.assertTrue(any("non-practice" in p for p in probs), probs)
 
-    def test_screening_only_none_and_needs_threshold(self):
+    def test_screening_only_none_and_needs_rule_and_registration(self):
         self.sb.cfg_data["stages"]["screening"]["conditions"] = ["none", "axiom"]
         self.sb.save()
         probs = check_stage_guards(self.sb.cfg(), "screening", mock=False)
         self.assertTrue(any("only use the 'none'" in p for p in probs), probs)
-        self.assertTrue(any("threshold" in p for p in probs), probs)
+        self.assertTrue(any("cap and min_kept" in p for p in probs), probs)
+        self.assertTrue(any("registration_commit" in p for p in probs), probs)
+
+    def test_named_test_stages_are_registered_stages(self):
+        self.sb.cfg_data["stages"]["test-extra"] = dict(self.sb.cfg_data["stages"]["test"])
+        self.sb.save()
+        probs = check_stage_guards(self.sb.cfg(), "test-extra", mock=False)
+        self.assertFalse(any("only a registered test stage" in p for p in probs), probs)
+        self.assertTrue(any("registration_commit" in p for p in probs), probs)
 
     def test_test_stage_requires_freeze(self):
         probs = check_stage_guards(self.sb.cfg(), "test", mock=False)
