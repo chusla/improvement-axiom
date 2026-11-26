@@ -1,0 +1,65 @@
+{
+  "lodestar": null,
+  "deployedAt": "2026-11-26T18:38:35.809Z",
+  "files": {
+    "scripts/lodestar/launch-preflight.mjs": {
+      "src": "scripts/launch-preflight.mjs",
+      "category": "station",
+      "hash": "ba1d7d4340de9e8f"
+    },
+    "launch/preflight.example.mjs": {
+      "src": "scripts/launch-preflight.example.mjs",
+      "category": "station",
+      "hash": "866819dfbb58bfca"
+    },
+    "scripts/beat.mjs": {
+      "src": "../apps/pass/bridge/beat.mjs",
+      "category": "station",
+      "hash": "5df4f0e37375636c"
+    },
+    "scripts/board.mjs": {
+      "src": "../apps/pass/bridge/board.mjs",
+      "category": "station",
+      "hash": "6dca8e8aaa037525"
+    },
+    ".claude/skills/station/SKILL.md": {
+      "src": "../.claude/skills/station/SKILL.md",
+      "category": "station",
+      "hash": "6166c97c86a4eab6"
+    },
+    ".claude/skills/zid-proof/SKILL.md": {
+      "src": "doctrine/skills/zid-proof/SKILL.md",
+      "category": "station",
+      "hash": "01b3aeb7aca930d8"
+    },
+    ".claude/skills/kelly-proof/SKILL.md": {
+      "src": "doctrine/skills/kelly-proof/SKILL.md",
+      "category": "station",
+      "hash": "fb56aba42327ec97"
+    },
+    ".claude/skills/side-effects-off-until-live/SKILL.md": {
+      "src": "doctrine/skills/side-effects-off-until-live/SKILL.md",
+      "category": "station",
+      "hash": "8c4f909aef15f467"
+    },
+    ".claude/skills/agent-ready-public-pages/SKILL.md": {
+      "src": "doctrine/skills/agent-ready-public-pages/SKILL.md",
+      "category": "station",
+      "hash": "1a0d971213de9fd5"
+    },
+    ".claude/skills/search-ready-public-pages/SKILL.md": {
+      "src": "doctrine/skills/search-ready-public-pages/SKILL.md",
+      "category": "station",
+      "hash": "00cf082b0a771415"
+    }
+  },
+  "partial": {
+    "station": {
+      "lodestar": "0.1.0+6446d79",
+      "at": "2026-11-26T18:38:35.799Z"
+    }
+  },
+  "categories": [
+    "station"
+  ]
+}
