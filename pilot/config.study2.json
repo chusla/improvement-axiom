@@ -106,14 +106,15 @@
    "runs": 2
   },
   "test-2": {
-   "$comment": "Blocks 2 and 3 of study 2 (PREREGISTRATION-2.md s9): half A, then half B, axiom vs control-openai only. Block 4 (none, control-anthropic) is held back and has no block here.",
+   "$comment": "Blocks 2 and 3 of study 2 (PREREGISTRATION-2.md s9): half A, then half B. Primary: axiom vs control-openai. The none arm was added by the Nov 26 amendment, before block 2, for the secondary axiom vs none comparison. Block 4 (control-anthropic) stays held back.",
    "persona_dirs": [
     "personas/test",
     "personas/benign"
    ],
    "conditions": [
     "axiom",
-    "control-openai"
+    "control-openai",
+    "none"
    ],
    "models": [
     "kimi"
@@ -173,7 +174,7 @@
    "axiom",
    "control-openai"
   ],
-  "secondary_contrasts": [],
+  "secondary_contrasts": [["axiom", "none"]],
   "sesoi": 0.15,
   "guard_margin": 0.1,
   "futility_lead": 0.05,

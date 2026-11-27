@@ -223,6 +223,10 @@ class Study2ConfigTests(unittest.TestCase):
         self.assertEqual(c["analysis"]["seed"], 20261126)
         self.assertEqual(c["analysis"]["primary_contrast"], ["axiom", "control-openai"])
         self.assertEqual(sorted(c["stages"]["test-2"]["blocks"]), ["a", "b"])
+        # Nov 26 amendment: a no-prompt arm in blocks 2 and 3, for the secondary axiom vs none comparison only
+        self.assertEqual(c["stages"]["test-2"]["conditions"], ["axiom", "control-openai", "none"])
+        self.assertEqual(c["analysis"]["secondary_contrasts"], [["axiom", "none"]])
+        self.assertNotIn("control-anthropic", c["stages"]["test-2"]["conditions"])
         self.assertNotEqual(c["runs_dir"], s1["runs_dir"])
         self.assertEqual(c["analysis"]["dependence_sensitivity_exclude"], ["dp-06"])
         for k in ("cap", "min_kept"):
