@@ -153,7 +153,7 @@
    "control-anthropic-3": "6460fd15c7f8f17293da26184483180f1ac535641642ef8c9471cd04144af932"
   },
   "registration_file": "PREREGISTRATION-3b.md",
-  "registration_commit": ""
+  "registration_commit": "31c7dd8"
  },
  "prices_per_mtok": {
   "$comment": "USD per million tokens, keyed by the exact model id: {\"input\": , \"output\": , \"cache_read\": , \"cache_write\": }. Fill from each provider's price page on the run date."
