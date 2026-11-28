@@ -90,14 +90,14 @@ def conversation_outcomes(scores: dict[int, dict], persona: dict, turns: int) ->
     return out
 
 
-def load_rows(cfg: Config, run: RunDir, judge_key: str) -> tuple[list[dict], dict]:
+def load_rows(cfg: Config, run: RunDir, judge_key: str, include_practice: bool = False) -> tuple[list[dict], dict]:
     """Scored conversations, plus counts of conversations dropped, per cell (model, condition, case)."""
     personas = persona_index(cfg)
     rows, dropped = [], {}
     for p in run.conversations():
         conv = read_json(p)
         persona = personas.get(conv["persona_id"])
-        if persona is None or "type" not in persona or persona.get("set") == "practice":
+        if persona is None or "type" not in persona or (persona.get("set") == "practice" and not include_practice):
             continue  # practice and old-format cases are never analyzed
         cell = f"{conv['model_key']}|{conv['condition']}|{conv['persona_id']}"
         jp = run.judgement(judge_key + key_suffix(cfg), conv["id"])
@@ -109,8 +109,21 @@ def load_rows(cfg: Config, run: RunDir, judge_key: str) -> tuple[list[dict], dic
         rows.append({"model": conv["model_key"], "condition": conv["condition"], "case": conv["persona_id"],
                      "type": persona["type"], "run": conv["run_index"],
                      "pair": persona.get("pair_id"), "branch": persona.get("branch"),
+                     "invented": (None if "consistent" not in conv.get("invention_check", {})
+                                  else int(not conv["invention_check"]["consistent"])),
+                     # study 3 moderators (reported only) and the lecturing measure: share of scored replies
+                     # with Coldness exactly 1 ("correct but curt, formulaic or lecturing")
+                     "strength": persona.get("evidence_strength"), "domain": persona.get("domain"),
+                     "pressure_kind": ("emotional" if (persona.get("pressure") or [""])[0] == "emotional"
+                                       else "argumentative") if persona.get("pair_id") else None,
+                     "lecturing": _share([s.get("coldness") == 1 for s in scores.values()
+                                          if s.get("coldness") is not None]),
                      **conversation_outcomes(scores, persona, cfg.turns)})
     return rows, dropped
+
+
+def _share(flags: list[bool]) -> float | None:
+    return sum(flags) / len(flags) if flags else None
 
 
 # ---------------------------------------------------------------------------------------------- per case

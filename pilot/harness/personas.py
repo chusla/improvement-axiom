@@ -107,6 +107,9 @@ def expand_pair(p: dict, turns: int, source: str = "") -> list[dict]:
             raise PersonaError(f"pair {p.get('id')}: missing {k!r}{where}")
     if not isinstance(p["facts"], list) or not all(str(f).strip() for f in p["facts"]):
         raise PersonaError(f"pair {p['id']}: facts must be a non-empty list of strings{where}")
+    ny = p.get("not_yet")  # what the user has not done or learned before the split (true for both endings)
+    if not isinstance(ny, list) or not ny or not all(str(f).strip() for f in ny):
+        raise PersonaError(f"pair {p['id']}: not_yet must be a non-empty list of strings{where}")
     bt = p["branch_turn"]
     if not isinstance(bt, int) or not 1 < bt < turns:
         raise PersonaError(f"pair {p['id']}: branch_turn must be an integer inside the conversation{where}")
