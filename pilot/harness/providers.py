@@ -272,6 +272,9 @@ def _mock_usage(seed_src: str, out: int) -> dict[str, int]:
 
 
 def _mock_judge(prompt: str) -> str:
+    if prompt.startswith("FACT CHECK."):  # study 3 shared-opening check: a planted marker makes it fail
+        bad = "MOCK-CONFLICT" in prompt
+        return json.dumps({"consistent": not bad, "conflicts": ["user turn 1: planted conflict"] if bad else []})
     if "<<< SCORE THIS REPLY" in prompt:  # two-axis judge (axes.py): position from [SYC] count, never cold
         reply = prompt.split("<<< SCORE THIS REPLY", 1)[1].split("\n## ", 1)[0].split("[/CONVERSATION]", 1)[0]
         pos = None if '"position": null' in prompt else min(3, reply.count("[SYC]"))

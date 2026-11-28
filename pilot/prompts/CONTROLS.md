@@ -77,3 +77,38 @@ python -P -c "import pypdf,sys; r=pypdf.PdfReader(sys.argv[1]); open(sys.argv[2]
 python -I prompts/build_controls.py --write
 python -m harness hash
 ```
+
+## Study 3 versions (Nov 27, 2026, HST)
+
+Built by `python -I prompts/build_controls.py --study3 --write` under `CONTROLS-3-RULE.md` (commit `0ba75eb`),
+written before the testing side read the round-two Axiom prompt. The study 1 files above are unchanged.
+
+| File | Words | SHA-256 |
+|---|---|---|
+| `axiom-r2.frozen.md` (reference; copied from `axiom-prompt-studio/outputs/round2/axiom-prompt.md`, hash checked against its `FREEZE.md`) | 1,951 | `ae521dd4eb53305fc0cc09f331235dbbfefe001f946f52ead46677571d8f8e06` |
+| `control-openai-3.md` | 1,940 | `8325f56f21c5abdbcbc5961b490183e84fd105ebc78da19864f670a65439b105` |
+| `control-anthropic-3.md` | 1,952 | `6460fd15c7f8f17293da26184483180f1ac535641642ef8c9471cd04144af932` |
+
+Allowed length: 1,951 ±5% (1,853–2,049). Both controls fall inside it. No source ran short.
+
+**Added to the OpenAI Model Spec control,** in the spec's order (topics from rule 1 in brackets):
+- *Try to prevent imminent real-world harm* [users at risk]: all prose except the paragraph about live video,
+  which a text chat never has (rule 3). The next sentence ("…before interjecting") refers back to it and is kept
+  verbatim.
+- *Be clear about capabilities and limits* [users' false beliefs, here about the assistant]: all.
+- *Facilitate human agency*, the chapter's introduction [dependence, steering]: all.
+- *Assume an objective point of view* [users' false beliefs; holding a factual position when pressed]: all.
+- Considered and left out as outside rule 1's topics: *Avoid errors*, *Express uncertainty*, *Consider
+  uncertainty… ask clarifying questions*. Reached the target before *Strengthen the user's ability to understand,
+  choose, and act*, which was next in order.
+
+**Added to the Claude's-constitution control:**
+- Restored first (study 1 cut them to fit): the *transparent* and *forthright* honesty properties; the paragraph
+  on non-deception and non-manipulation mattering most (to "…human trust in Claude."); the tarot passage.
+- Then, in the document's order: the paragraph on the goal of autonomy preservation [dependence]; and from
+  *Preserving epistemic autonomy*, the paragraphs on manipulation, on complacency and dependence, and the closing
+  "More generally…" paragraph.
+- Left out as before (rule 3 or off-topic): the paragraph on reasoning as a scratchpad; the paragraph on the weak
+  duty to share information (its examples are operators and third parties); performative assertions; the
+  paragraphs on delicate and political topics (operator defaults).
+- The name edit turns "AIs like Claude" into "AIs like the assistant", as the mechanical rule requires.

@@ -14,7 +14,8 @@ PILOT = Path(__file__).resolve().parent.parent
 SPEC_DIR = PILOT / "vendor" / "model_spec"
 SPEC_COMMIT = "38fe813406f7bdcbee07b18a058e90ec09ae117a"  # v2026.10.29, latest commit Nov 11 2026
 CONST_TXT = PILOT / "vendor" / "constitution" / "claudes-constitution.txt"
-TARGET = 1098                      # words in the frozen Axiom prompt
+TARGET = 1098                      # words in the frozen Axiom prompt (studies 1 and 2)
+TARGET3 = 1951                     # words in the round-two Axiom prompt (study 3, prompts/CONTROLS-3-RULE.md)
 LO, HI = round(TARGET * 0.95), round(TARGET * 1.05)
 
 
@@ -37,13 +38,13 @@ def spec_section(spec: str, anchor: str, own_text_only: bool = True) -> str:
     return paras
 
 
-def openai_control() -> tuple[str, list]:
+def openai_control(picks=None) -> tuple[str, list]:
     head = subprocess.run(["git", "-C", str(SPEC_DIR), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     if head != SPEC_COMMIT:
         sys.exit(f"model_spec clone is at {head}, expected {SPEC_COMMIT}")
     spec = (SPEC_DIR / "model_spec.md").read_text(encoding="utf-8")
     log = []
-    picks = [  # (anchor, paragraph indexes to keep or None for all), in the spec's own order
+    picks = picks or [  # (anchor, paragraph indexes to keep or None for all), in the spec's own order
         ("do_not_encourage_self_harm", None),
         ("support_mental_health", None),
         ("respect_real_world_ties", None),
@@ -63,6 +64,11 @@ def openai_control() -> tuple[str, list]:
             log.append(f"{anchor}: kept paragraphs {idx}, dropped {dropped} (developer, tool, third-party and "
                        f"confidentiality rules that do not apply to a self-contained chat)")
             paras = [paras[i] for i in idx]
+        elif keep == "chat_only":
+            # study 3: drop the paragraph about live video, which a text-only chat never has (CONTROLS.md rule 3)
+            dropped = [i for i, p in enumerate(paras) if "streaming video" in p]
+            log.append(f"{anchor}: dropped paragraphs {dropped} (live video, not a text chat)")
+            paras = [p for i, p in enumerate(paras) if i not in dropped]
         else:
             log.append(f"{anchor}: all {len(paras)} prose paragraphs")
         out.extend(paras)
@@ -98,9 +104,9 @@ def between(raw: str, start: str, end: str) -> str:
     return re.sub(r" (?=• )", "\n\n", seg)               # list items on their own lines
 
 
-def anthropic_control() -> tuple[str, list]:
+def anthropic_control(spans=None) -> tuple[str, list]:
     raw = constitution_paragraphs()
-    spans = [  # (first words, last words) of each verbatim passage, in the document's order
+    spans = spans or [  # (first words, last words) of each verbatim passage, in the document's order
         ("• Wellbeing: In interactions with users", "without being paternalistic or dishonest."),
         ("Concern for user wellbeing means", "other beneficial sources of support in their life."),
         ("It is easy to create a technology", "supporting a person’s growth as reflecting real care."),
@@ -131,11 +137,53 @@ def anthropic_control() -> tuple[str, list]:
     return text, log
 
 
+# ---------------------------------------------------------------- study 3 (prompts/CONTROLS-3-RULE.md)
+# Same passages as study 1, plus, in the source's own order: first what study 1 cut to fit, then further
+# passages on the same outcome topics, until the round-two Axiom's length (TARGET3 +-5%) is reached.
+OPENAI_PICKS_3 = [
+    ("prevent_imminent_harm", "chat_only"),  # added: users at risk
+    ("do_not_encourage_self_harm", None),
+    ("support_mental_health", None),
+    ("respect_real_world_ties", None),
+    ("seek_truth", None),
+    ("do_not_lie", "false_premises"),
+    ("avoid_sycophancy", None),
+    ("maintain_shared_context", None),       # added: users' false beliefs about the assistant
+    ("highlight_misalignments", None),
+    ("human_agency", None),                  # added: the chapter's introduction (dependence, steering)
+    ("assume_objective_pov", None),          # added: users' false beliefs, holding a factual position
+]
+ANTHROPIC_SPANS_3 = [
+    ("• Wellbeing: In interactions with users", "without being paternalistic or dishonest."),
+    ("Concern for user wellbeing means", "other beneficial sources of support in their life."),
+    ("It is easy to create a technology", "supporting a person’s growth as reflecting real care."),
+    ("Honesty is a core aspect of our vision", "while remaining honest in the sense we have in mind)."),
+    # restored: the transparent and forthright properties, between calibrated and non-deceptive
+    ("Honesty also has a role in Claude’s epistemology.", "conclusions through their own reasoning process."),
+    ("The most important of these properties", "could critically undermine human trust in Claude."),  # restored
+    ("There will nonetheless be cases where", "frame them compassionately."),
+    ("Claude is also not acting deceptively if", "more than its honesty principles."),  # restored (tarot)
+    ("The goal of autonomy preservation", "excessive dependence on AI or a homogenization of views."),  # added
+    ("Sometimes being honest requires courage.", "constraints of honesty rather than sacrificing them."),
+    ("Because AIs are so epistemically capable", "this is a red flag for manipulation."),  # added
+    ("Another way AI can degrade human epistemology", "We want Claude to help cultivate this kind of ecosystem."),  # added
+    ("More generally, we want AIs like Claude", "to empower good human epistemology rather than to degrade it."),  # added
+]
+
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    for name, (text, log) in {"control-openai.md": openai_control(), "control-anthropic.md": anthropic_control()}.items():
+    if "--study3" in sys.argv:
+        target = TARGET3
+        builds = {"control-openai-3.md": openai_control(OPENAI_PICKS_3),
+                  "control-anthropic-3.md": anthropic_control(ANTHROPIC_SPANS_3)}
+    else:
+        target = TARGET
+        builds = {"control-openai.md": openai_control(), "control-anthropic.md": anthropic_control()}
+    lo, hi = round(target * 0.95), round(target * 1.05)
+    for name, (text, log) in builds.items():
         n = words(text)
-        print(f"\n## {name}: {n} words (target {TARGET}, allowed {LO}-{HI}) {'OK' if LO <= n <= HI else 'OUT OF RANGE'}")
+        print(f"\n## {name}: {n} words (target {target}, allowed {lo}-{hi}) {'OK' if lo <= n <= hi else 'OUT OF RANGE'}")
         for line in log:
             print("  -", line)
         if "--write" in sys.argv:

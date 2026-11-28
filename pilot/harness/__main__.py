@@ -166,6 +166,12 @@ def cmd_status(cfg, args) -> int:
         print(f"  error {c['id']}: {c['errors'][-1]['error'][:200]}")
     cost = analysis.cost_summary(cfg, run)
     print(f"  estimated cost so far: ${cost['total_usd']}" + (f" (unpriced: {cost['unpriced']})" if cost["unpriced"] else ""))
+    openers = [read_json(p) for p in sorted((run.root / "openers").glob("*.json"))] if (run.root / "openers").exists() else []
+    if openers:  # study 3 shared openings: their calls are billed once, here, not in the branch records
+        print("  shared openings by status:", dict(Counter(o["status"] for o in openers)),
+              f"regenerated after a failed fact check: {sum(1 for o in openers if len(o.get('fact_checks', [])) > 1)}")
+    billed = sum(c.get("raw_cost") or 0 for r in convs + openers for c in r.get("calls", []))
+    print(f"  provider-reported cost (OpenRouter): ${billed:.2f}")
     return 0
 
 
@@ -175,6 +181,11 @@ def cmd_analyze(cfg, args) -> int:
         out = analysis.analyze(cfg, run)
         print((run.root / "analysis.md").read_text(encoding="utf-8"))
         return 0 if out["n_conversations_scored"] else 1
+    if cfg.data.get("analysis", {}).get("design") == "pairs":  # study 3
+        from .pairs import analyze_pairs
+        out = analyze_pairs(cfg, run, args.stage)
+        print((run.root / "analysis-pairs.md").read_text(encoding="utf-8"))
+        return 0 if out["n_conversations"] else 1
     out = analyze_axes(cfg, run, args.stage)
     print((run.root / "analysis-axes.md").read_text(encoding="utf-8"))
     return 0 if out["n_conversations"] else 1

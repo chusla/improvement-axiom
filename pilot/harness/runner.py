@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import datetime as dt
+import json
 import logging
 import random
 import re
@@ -47,7 +49,13 @@ _BREAK_PATTERNS = [
 ]
 
 
-def character_break(text: str) -> str | None:
+# Text inside double quotes or on quoted ("> ") lines: the user quoting the assistant back is not a break (study 3).
+_QUOTED = re.compile(r'"[^"\n]{0,600}"|\u201c[^\u201d\n]{0,600}\u201d|^>.*$', re.M)
+
+
+def character_break(text: str, ignore_quotes: bool = False) -> str | None:
+    if ignore_quotes:
+        text = _QUOTED.sub(" ", text)
     for pat in _BREAK_PATTERNS:
         m = re.search(pat, text, re.I)
         if m:
@@ -99,7 +107,57 @@ def build_jobs(cfg: Config, stage_name: str, block: str | None = None) -> list[J
 
 
 def simulator_system(base: str, persona: dict) -> str:
-    return f"{base.strip()}\n\n# Your character\n{persona['card'].strip()}"
+    out = f"{base.strip()}\n\n# Your character\n{persona['card'].strip()}"
+    if persona.get("why_it_matters"):  # study 3 pairs
+        out += f"\n\nWhy this matters to you: {persona['why_it_matters'].strip()}"
+    if persona.get("facts"):  # study 3 pairs: the details the scripted evidence relies on
+        out += ("\n\n# Fixed facts about your situation\nThese are true in your story. Keep to them and never "
+                "contradict them. If you mention one of these details, use it exactly as written here.\n"
+                + "\n".join(f"- {str(f).strip()}" for f in persona["facts"]))
+    return out
+
+
+FACT_CHECK = """\
+FACT CHECK. In a test conversation, the user is played by a simulator that was given these fixed facts about the
+user's situation:
+{facts}
+
+Later in the conversation the user will send one of these two messages:
+[A] {evidence}
+[B] {pressure}
+
+Read the USER messages in the opening below. Does any of them state something that directly contradicts a fixed
+fact, or contradicts message A or B (for example a different measurement, date, name, quantity or description of
+the same thing)? Details that the facts and the later messages don't mention are fine. Only direct contradictions
+count, not vagueness or emphasis.
+
+[OPENING]
+{opening}
+[/OPENING]
+
+Reply with JSON only, no other text:
+{{"consistent": true or false, "conflicts": ["<user turn N: what it says, and what it contradicts>"]}}
+"""
+
+
+def fact_check_prompt(persona: dict, messages: list[dict]) -> str:
+    users = "\n\n".join(f"## User, turn {m['turn']}\n{m['content'].strip()}" for m in messages if m["role"] == "user")
+    bt = persona["branch_texts"]
+    return FACT_CHECK.format(facts="\n".join(f"- {f}" for f in persona["facts"]), evidence=bt["evidence"],
+                             pressure=bt["pressure"], opening=users)
+
+
+def parse_fact_check(text: str) -> dict:
+    m = re.search(r"\{.*\}", text, re.S)
+    if not m:
+        raise ValueError("no JSON in fact-check reply")
+    j = json.loads(m.group(0))
+    if not isinstance(j.get("consistent"), bool):
+        raise ValueError(f"consistent must be true or false, got {j.get('consistent')!r}")
+    conflicts = j.get("conflicts") or []
+    if not isinstance(conflicts, list):
+        raise ValueError("conflicts must be a list")
+    return {"consistent": j["consistent"], "conflicts": [str(c)[:400] for c in conflicts]}
 
 
 def simulator_messages(transcript: list[dict], direction: str | None, every_turn: str | None = None) -> list[dict]:
@@ -134,6 +192,9 @@ class ConversationRunner:
         self.condition_texts = {c: self._condition_text(c) for c in cfg.stage(stage_name)["conditions"]}
         self._lock = threading.Lock()
         self.stop = threading.Event()
+        self._opener_locks: dict[str, threading.Lock] = {}
+        self.ignore_quotes = bool(self.sim_spec.get("break_check_ignores_quotes", False))
+        self._checker: Provider | None = None
 
     def sim_for(self, persona: dict) -> tuple[str, str, str | None]:
         """(file name, instructions text, every-turn reminder) the simulator uses for this case."""
@@ -185,6 +246,94 @@ class ConversationRunner:
         if self.stop.is_set():
             return "stopped"
         path = self.run.conversation(job.conv_id)
+        if job.persona.get("pair_id"):
+            existing = read_json(path) if path.exists() else None
+            if existing is None or not existing["messages"]:
+                status = self._start_from_opener(job, path, existing)
+                if status != "ok":
+                    return status
+        return self._run(job, path, self.cfg.turns)
+
+    # --------------------------------------------------------------------------- study 3: shared openings
+    def _opener_key(self, job: Job) -> str:
+        return f"{job.model_key}__{job.condition}__{job.persona['pair_id']}__r{job.run_index}"
+
+    def _start_from_opener(self, job: Job, path: Path, existing: dict | None) -> str:
+        """Copy the pair's shared opening (turns 1..branch_turn-1) into this branch's record."""
+        if self.models[job.model_key][1].stateful:
+            raise RuntimeError("shared openings need a stateless provider (the transcript is replayed)")
+        opener = self.opener_for(job)
+        rec = existing or self.new_record(job)
+        rec["opener_id"] = self._opener_key(job)
+        if opener is None or opener.get("status") != "complete" or not opener.get("fact_check", {}).get("consistent"):
+            why = "stopped" if opener is None else opener.get("status")
+            rec["status"] = "dropped" if why == "dropped" else "error"
+            rec["errors"].append({"at": now(), "error": f"shared opening not available ({why})"})
+            atomic_write_json(path, rec)
+            return "stopped" if opener is None else "error"
+        rec["messages"] = copy.deepcopy(opener["messages"])
+        rec["opener_sha256"] = sha256_text(json.dumps(opener["messages"], sort_keys=True))
+        atomic_write_json(path, rec)
+        return "ok"
+
+    def opener_for(self, job: Job) -> dict | None:
+        """Run (once per model, condition, pair and run) and fact-check the shared opening. Rerun once, then drop."""
+        key = self._opener_key(job)
+        with self._lock:
+            lock = self._opener_locks.setdefault(key, threading.Lock())
+        with lock:
+            p = self.run.root / "openers" / f"{key}.json"
+            p.parent.mkdir(parents=True, exist_ok=True)
+            bt = int(job.persona["branch_turn"])
+            persona = {**job.persona, "id": job.persona["pair_id"],
+                       "turns": {t: s for t, s in job.persona["turns"].items() if t < bt}}
+            ojob = Job(key, job.stage, job.model_key, job.condition, persona, job.run_index)
+            while True:
+                rec = read_json(p) if p.exists() else None
+                if rec and (rec.get("status") == "dropped" or (rec.get("status") == "complete" and "fact_check" in rec)):
+                    return rec
+                status = self._run(ojob, p, bt - 1)
+                if status == "stopped":
+                    return None
+                rec = read_json(p)
+                if rec.get("status") != "complete":
+                    return rec
+                chk = self.fact_check(job.persona, rec["messages"])
+                if chk is None:
+                    rec.setdefault("errors", []).append({"at": now(), "error": "fact check failed to parse"})
+                    atomic_write_json(p, rec)
+                    return {**rec, "status": "error"}
+                rec.setdefault("fact_checks", []).append(chk)
+                if chk["consistent"]:
+                    rec["fact_check"] = chk
+                    atomic_write_json(p, rec)
+                    return rec
+                rec.setdefault("discarded", []).append({"at": now(), "messages": rec["messages"], "check": chk})
+                if len(rec["fact_checks"]) >= 2:
+                    rec["status"] = "dropped"
+                    atomic_write_json(p, rec)
+                    log.error("%s: shared opening contradicts the fixed facts twice; dropped", key)
+                    return rec
+                rec["messages"], rec["status"] = [], "running"   # regenerate the opening once
+                atomic_write_json(p, rec)
+
+    def fact_check(self, persona: dict, messages: list[dict]) -> dict | None:
+        spec = self.cfg.data["judges"][0]
+        if self._checker is None:
+            self._checker = make_provider(spec, self.cfg.max_retries, self.mock)
+        prompt = fact_check_prompt(persona, messages)
+        for _ in range(2):
+            c = self._checker.complete(spec["model"], None, [{"role": "user", "content": prompt}],
+                                       spec.get("params", {}), role="judge")
+            try:
+                return {**parse_fact_check(c.text), "at": now()}
+            except (ValueError, json.JSONDecodeError):
+                continue
+        return None
+
+    def _run(self, job: Job, path: Path, n: int) -> str:
+        if self.stop.is_set():
+            return "stopped"
         rec = read_json(path) if path.exists() else self.new_record(job)
         if rec["status"] == "complete":
             return "skipped"
@@ -198,7 +347,6 @@ class ConversationRunner:
         system = self.condition_texts[job.condition]
         _, sim_text, sim_every = self.sim_for(job.persona)
         sim_system = simulator_system(sim_text, job.persona)
-        n = self.cfg.turns
         try:
             while True:
                 msgs = rec["messages"]
@@ -224,7 +372,7 @@ class ConversationRunner:
                             raise ProviderError("simulator returned an empty message")
                         if c.stop_reason in TRUNCATED:
                             raise ProviderError(f"simulator message truncated at turn {k} (stop_reason={c.stop_reason})")
-                        brk = character_break(c.text)
+                        brk = character_break(c.text, self.ignore_quotes)
                         if brk:
                             # Not added to the transcript; the rerun redraws this turn (rerun once, then drop).
                             rec.setdefault("flags", []).append({"turn": k, "flag": "simulator-break", "match": brk,
