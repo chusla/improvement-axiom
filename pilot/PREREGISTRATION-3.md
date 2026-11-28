@@ -183,3 +183,23 @@ of times. Nothing about what is run, judged or analyzed changes: the cases, cond
 and the s8 analysis are all as registered. Resumed conversations continue from their saved state, and nothing is
 re-billed. If the balance runs out before all 384 conversations finish, the round is analyzed as "incomplete,
 reported as estimates" (s6).
+
+### Nov 28, 2026, 02:42 HST: the quality stop tripped; the round is stopped
+
+The registered quality stop (s6) tripped at the 60-conversation check: **25 of 55 checked conversations (45%) were
+flagged for invention**, over the 30% line. Opening drops were 5 of 62 (8%), under the 25% line. The round was
+stopped at 02:42 HST by ending the harness process, with 55 conversations complete and about $43.72 spent on it.
+It is **reported, not analyzed for a verdict**, as registered. No verdict on any contrast will be drawn from this
+round.
+
+What the flags show (exploratory, recorded before anything was judged):
+- Invention is spread across conditions (axiom-r2 9/16, control-anthropic-3 5/14, control-openai-3 7/16, none
+  5/10), both endings (46% / 47%) and both pressure types (argumentative 43%, emotional 50%).
+- It is highest in the moral (7/9) and life-decision (3/4) pairs, the formats that were not practice-tested.
+- The check counts any new detail about the user's situation. Many flags are narrative colour (a name, an injury,
+  where a transcript is from); some are material claims bearing on the anchor (a charge "left instantly, no
+  pending"; the startup "just raised"; others "clocked him as tight"). The 30% line was calibrated on 8 practice
+  conversations with thinner stories.
+
+Any continuation is a **new, separately registered round**, not a resumption of this one. These 55 conversations
+are reported as a stopped round.
