@@ -12,6 +12,7 @@ Guards enforced in code, not just in the docs:
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -51,7 +52,9 @@ class Config:
 
     @property
     def concurrency(self) -> int:
-        return int(self.data.get("concurrency", 4))
+        # HARNESS_CONCURRENCY overrides the config for one run (operational only: e.g. to stay inside a provider's
+        # in-flight credit budget). It changes how many conversations run at once, never what is run or scored.
+        return int(os.environ.get("HARNESS_CONCURRENCY") or self.data.get("concurrency", 4))
 
     def stage(self, name: str) -> dict:
         stages = self.data.get("stages", {})

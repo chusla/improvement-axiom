@@ -170,4 +170,16 @@ Code: `harness/pairs.py`, as committed here.
 
 ## Amendments (dated, appended only)
 
-(none)
+### Nov 28, 2026, 01:15 HST: parallelism lowered after a provider credit limit (operational only)
+
+The round started at 00:22 HST with 20 conversations in parallel. At 00:56 HST OpenRouter refused new requests with
+HTTP 402 "in_flight_budget_exhausted": the credit it reserves for requests in flight scales with the account
+balance. The harness paused the batch as designed. By then 16 conversations were complete, 1 had errored and 1
+opening had been dropped.
+
+`HARNESS_CONCURRENCY` (an environment variable, `harness/config.py`) now overrides the config's `concurrency` for a
+run. The round resumes at lower parallelism. If the limit trips again, it backs off and retries a bounded number
+of times. Nothing about what is run, judged or analyzed changes: the cases, conditions, prompts, simulator, judge
+and the s8 analysis are all as registered. Resumed conversations continue from their saved state, and nothing is
+re-billed. If the balance runs out before all 384 conversations finish, the round is analyzed as "incomplete,
+reported as estimates" (s6).
