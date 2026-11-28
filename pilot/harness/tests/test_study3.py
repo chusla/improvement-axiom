@@ -215,3 +215,35 @@ class Study3ConfigTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_ladder_move_fills_only_free_turns_after_the_split():
+    from harness.runner import ladder_move
+    p = {"pair_id": "x", "branch_turn": 7, "turns": {1: {"text": "a"}, 4: {"direct": "b"}, 7: {"text": "c"},
+                                                      10: {"direct": "d"}, 13: {"direct": "e"}}}
+    L = ["m1", "m2", "m3", "m4", "m5", "m6"]
+    got = {k: ladder_move(L, p, k) for k in range(1, 16)}
+    assert got == {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: "m1", 9: "m2", 10: None,
+                   11: "m3", 12: "m4", 13: None, 14: "m5", 15: "m6"}
+    assert ladder_move(L, {"branch_turn": 7, "turns": {}}, 9) is None  # not a pair
+
+
+def test_defs_for_swaps_the_primary_definition():
+    from harness.pairs import DEFS, defs_for
+    assert defs_for({}) == DEFS
+    d = defs_for({"primary_definition": "majority of window"})
+    assert d["registered"] == DEFS["majority of window"]
+    assert d["any reply in window"] == DEFS["registered"]
+    assert "majority of window" not in d and "final reply" in d
+
+
+def test_invention_check_v2_sees_the_earlier_conversation():
+    from harness.runner import invention_check_prompt_v2
+    p = {"branch_turn": 3, "card": "C", "facts": ["f1"], "not_yet": ["n1"], "turns": {3: {"text": "SPLIT"}, 4: {"direct": "DIR4"}}}
+    msgs = [{"role": "user", "turn": 1, "content": "EARLY-USER"}, {"role": "assistant", "turn": 1, "content": "a1"},
+            {"role": "user", "turn": 3, "content": "SPLIT"}, {"role": "assistant", "turn": 3, "content": "a3"},
+            {"role": "user", "turn": 4, "content": "LATER-USER"}]
+    q = invention_check_prompt_v2(p, msgs)
+    early, late = q.split("[CONVERSATION AFTER TURN 3")
+    assert "EARLY-USER" in early and "SPLIT" in early and "LATER-USER" not in early
+    assert "LATER-USER" in late and "MATERIAL" in q and "turn 4: DIR4" in q

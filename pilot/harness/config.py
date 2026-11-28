@@ -137,7 +137,8 @@ def check_stage_guards(cfg: Config, stage_name: str, mock: bool) -> list[str]:
             f"{non_practice}; only a registered test stage may do that"
         )
 
-    if (stage.get("simulator_base") or stage.get("simulator_every_turn")) and non_practice and not is_test:
+    if (stage.get("simulator_base") or stage.get("simulator_every_turn") or stage.get("simulator_override")
+            or stage.get("simulator_ladder")) and non_practice and not is_test:
         problems.append(f"stage {stage_name!r} swaps the simulator instructions on non-practice persona sets "
                         f"{non_practice}; simulator tuning is practice-only")
 
